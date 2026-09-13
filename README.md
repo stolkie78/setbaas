@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.2.0
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.2.1
 
 ## Tech Stack
 
@@ -357,6 +357,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.2.1** | 2026-09-13 | De trainingsduur (in minuten) kan nu worden ingevuld bij het aanmaken en bewerken van een training. |
 | **v4.2.0** | 2026-09-11 | Nieuwe **Backup & herstel**-functie voor platformbeheerders: op de platform-adminpagina kun je nu handmatig een volledige backup maken (SQLite + alle geüploade bestanden als zip), bestaande backups downloaden of verwijderen, en een externe zip terugzetten om te herstellen na een crash. Handig om periodiek een externe backup te maken naar bijvoorbeeld je eigen NAS. |
 | **v4.1.3** | 2026-09-10 | Kleine dashboard-patch: de live trainingskaart toont nu alleen **Bekijken** en **Afronden**. **Bekijken** is blauw, **Afronden** is rood, en beide knoppen zijn gelijk verdeeld over de kaartbreedte. |
 | **v4.1.2** | 2026-09-10 | Kleine dashboard-patch: de knoppen **Bekijken** en **Start** in geplande trainingskaarten zijn nu gelijk verdeeld over de breedte van de kaart, met ruimere tussenruimte. |

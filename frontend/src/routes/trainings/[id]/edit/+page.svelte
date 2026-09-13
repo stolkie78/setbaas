@@ -65,6 +65,7 @@
 	// Training form
 	let trainingDate = '';
 	let trainingTime = '17:30';
+	let durationMinutes = 90;
 	let overallRating = 7;
 	let generalComments = '';
 	let selectedTemplate = '';
@@ -110,6 +111,7 @@
 			selectedTemplate = training.template || '';
 			trainingStatus = (training.status as 'open' | 'active' | 'closed') || 'closed';
 			formContent = training.content || '';
+			durationMinutes = training.duration_minutes || 90;
 			selectedTrainers = Array.isArray(training.trainer) ? training.trainer : training.trainer ? [training.trainer] : [];
 
 			// Load trainers
@@ -192,6 +194,7 @@
 				status: trainingStatus,
 				content: formContent || undefined,
 				trainer: selectedTrainers,
+				duration_minutes: durationMinutes || undefined,
 			});
 
 			// Update/create attendance records
@@ -293,6 +296,11 @@
 					<input id="date" class="input flex-1" type="date" bind:value={trainingDate} required />
 					<input class="input w-28" type="time" bind:value={trainingTime} required />
 				</div>
+			</div>
+
+			<div>
+				<label class="label" for="duration">Duur (minuten)</label>
+				<input id="duration" class="input w-28" type="number" min="0" max="480" step="5" bind:value={durationMinutes} />
 			</div>
 
 			<!-- Trainer checkboxes -->

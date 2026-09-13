@@ -69,6 +69,7 @@
 	// Training form
 	let trainingDate = new Date().toISOString().slice(0, 10);
 	let trainingTime = '17:30';
+	let durationMinutes = 90;
 	let overallRating = 7;
 	let generalComments = '';
 	let selectedTemplate = '';
@@ -162,6 +163,7 @@
 				content: formContent || undefined,
 				created_by: $authUser?.id || undefined,
 				trainer: selectedTrainers.length > 0 ? selectedTrainers : undefined,
+				duration_minutes: durationMinutes || undefined,
 			});
 
 			// 2. Create attendance records
@@ -229,6 +231,11 @@
 					<input id="date" class="input flex-1" type="date" bind:value={trainingDate} required />
 					<input class="input w-28" type="time" bind:value={trainingTime} required />
 				</div>
+			</div>
+
+			<div>
+				<label class="label" for="duration">Duur (minuten)</label>
+				<input id="duration" class="input w-28" type="number" min="0" max="480" step="5" bind:value={durationMinutes} />
 			</div>
 
 			<!-- Trainer checkboxes -->

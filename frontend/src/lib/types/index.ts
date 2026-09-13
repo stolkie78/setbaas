@@ -126,6 +126,7 @@ export interface Training extends RecordModel {
 	created_by?: string;
 	trainer?: string[];
 	checkout_question?: string;
+	duration_minutes?: number;
 	expand?: {
 		template?: TrainingTemplate;
 		created_by?: { id: string; name: string; email: string };
