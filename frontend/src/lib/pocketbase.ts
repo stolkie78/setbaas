@@ -184,6 +184,7 @@ export async function getMatches(): Promise<Match[]> {
 export async function createMatch(data: {
 	date: string;
 	opponent: string;
+	location?: string;
 	status?: MatchStatus;
 	home_away: string;
 	coach?: string[];

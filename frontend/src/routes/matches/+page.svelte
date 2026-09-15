@@ -8,6 +8,7 @@
 	import { selectedTeamId, selectedSeasonId, matchesSortOrder } from '$lib/stores/context';
 	import { contextFilter } from '$lib/stores/context';
 	import { getMatchScore, getMatchSets, getMatchOutcome, formatSetScore, getMatchStatus, isMatchFinished } from '$lib/utils/match';
+	import { ArrowDownUp, Plus } from 'lucide-svelte';
 
 	let matches: Match[] = [];
 	let loading = true;
@@ -63,10 +64,22 @@
 		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Wedstrijden</h2>
 		<div class="flex gap-2">
 			<a href="{base}/matches/import" class="btn-secondary text-sm">📥 Nevobo</a>
-			<button class="btn-secondary text-sm" on:click={toggleSort} title="Sorteervolgorde wisselen">
-				📅 {$matchesSortOrder === 'desc' ? 'Nieuwste eerst' : 'Oudste eerst'}
+			<button
+				class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-400"
+				on:click={toggleSort}
+				title={$matchesSortOrder === 'desc' ? 'Nieuwste eerst — klik voor oudste eerst' : 'Oudste eerst — klik voor nieuwste eerst'}
+				aria-label={$matchesSortOrder === 'desc' ? 'Sorteer wedstrijden: nieuwste eerst' : 'Sorteer wedstrijden: oudste eerst'}
+			>
+				<ArrowDownUp size={22} />
 			</button>
-			<a href="{base}/matches/new" class="btn-primary">+ Wedstrijd</a>
+			<a
+				href="{base}/matches/new"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700"
+				title="Nieuwe wedstrijd"
+				aria-label="Nieuwe wedstrijd"
+			>
+				<Plus size={24} />
+			</a>
 		</div>
 	</div>
 

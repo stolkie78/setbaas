@@ -6,6 +6,7 @@
 	import type { Training, TrainingAttendance } from '$lib/types';
 	import { ATTENDANCE_LABELS, ATTENDANCE_STYLES } from '$lib/types';
 	import { marked } from 'marked';
+	import { CircleCheck, FileDown, Pencil } from 'lucide-svelte';
 
 	const HAPPINESS_EMOJIS = ['😢', '😕', '😐', '😊', '🤩'];
 	const HAPPINESS_LABELS = ['Baal', 'Meh', 'Oké', 'Blij', 'Super!'];
@@ -80,13 +81,32 @@
 				Training {new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 			</h1>
 			<div class="flex gap-2 no-print">
-				{#if training.status === 'open'}
-					<a href="{base}/trainings/{training.id}/checkin" class="btn-primary text-sm">Start Training</a>
-				{:else if training.status === 'active'}
-					<a href="{base}/trainings/{training.id}/checkout" class="btn-primary text-sm">Afronden</a>
+				{#if training.status === 'active'}
+					<a
+						href="{base}/trainings/{training.id}/checkout"
+						class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700"
+						title="Training afronden"
+						aria-label="Training afronden"
+					>
+						<CircleCheck size={22} />
+					</a>
 				{/if}
-				<button on:click={exportPDF} class="btn-secondary text-sm">PDF</button>
-				<a href="{base}/trainings/{training.id}/edit?returnTo={base}/trainings/{training.id}" class="btn-secondary text-sm">Bewerken</a>
+				<button
+					on:click={exportPDF}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-400"
+					title="Downloaden als PDF"
+					aria-label="Downloaden als PDF"
+				>
+					<FileDown size={22} />
+				</button>
+				<a
+					href="{base}/trainings/{training.id}/edit?returnTo={base}/trainings/{training.id}"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-400"
+					title="Training bewerken"
+					aria-label="Training bewerken"
+				>
+					<Pencil size={22} />
+				</a>
 			</div>
 		</div>
 

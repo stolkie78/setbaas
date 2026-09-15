@@ -8,6 +8,7 @@
 	import { ATTENDANCE_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId, trainingsSortOrder } from '$lib/stores/context';
 	import { contextFilter } from '$lib/stores/context';
+	import { ArrowDownUp, Plus } from 'lucide-svelte';
 
 	const HAPPINESS_EMOJIS = ['', '😢', '😕', '😐', '😊', '🤩'];
 	const FITNESS_EMOJIS = ['', '🥱', '😴', '💪', '🔥', '⚡'];
@@ -96,10 +97,22 @@
 	<div class="flex justify-between items-center">
 		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Trainingen</h2>
 		<div class="flex gap-2">
-			<button class="btn-secondary text-sm" on:click={toggleSort} title="Sorteervolgorde wisselen">
-				📅 {$trainingsSortOrder === 'desc' ? 'Nieuwste eerst' : 'Oudste eerst'}
+			<button
+				class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-400"
+				on:click={toggleSort}
+				title={$trainingsSortOrder === 'desc' ? 'Nieuwste eerst — klik voor oudste eerst' : 'Oudste eerst — klik voor nieuwste eerst'}
+				aria-label={$trainingsSortOrder === 'desc' ? 'Sorteer trainingen: nieuwste eerst' : 'Sorteer trainingen: oudste eerst'}
+			>
+				<ArrowDownUp size={22} />
 			</button>
-			<a href="{base}/trainings/new" class="btn-primary">+ Training</a>
+			<a
+				href="{base}/trainings/new"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700"
+				title="Nieuwe training"
+				aria-label="Nieuwe training"
+			>
+				<Plus size={24} />
+			</a>
 		</div>
 	</div>
 

@@ -4,13 +4,28 @@
 	import { pb } from '$lib/pocketbase';
 	import type { Player, Training, Match, TrainingAttendance, MatchAttendance } from '$lib/types';
 	import { getMatchStatus, isMatchFinished } from '$lib/utils/match';
-	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
+	import { currentClub, currentSeason, currentTeam, selectedTeamId, selectedSeasonId } from '$lib/stores/context';
 	import { contextFilter } from '$lib/stores/context';
 	import { currentRole, canEdit } from '$lib/stores/role';
 	import { marked } from 'marked';
 	import PlayerDashboard from '$lib/components/PlayerDashboard.svelte';
 	import ParentDashboard from '$lib/components/ParentDashboard.svelte';
 	import { browser } from '$app/environment';
+	import {
+		CalendarDays,
+		CircleCheck,
+		ClipboardPenLine,
+		Clock,
+		Building2,
+		Dumbbell,
+		Eye,
+		MapPin,
+		Pencil,
+		Play,
+		UserRound,
+		Users,
+		Volleyball,
+	} from 'lucide-svelte';
 
 	let players: Player[] = [];
 	let trainings: Training[] = [];
@@ -37,6 +52,7 @@
 		.slice(0, 5);
 
 	$: playedMatchCount = matches.filter(m => getMatchStatus(m) === 'played').length;
+	$: plannedMatchCount = matches.filter(m => getMatchStatus(m) === 'open').length;
 
 	$: activeTraining = trainings.find(t => t.status === 'active') || null;
 
@@ -46,6 +62,7 @@
 		.slice(0, 5);
 
 	$: closedTrainingCount = trainings.filter(t => t.status === 'closed').length;
+	$: plannedTrainingCount = trainings.filter(t => t.status === 'open' || t.status === 'active').length;
 
 	// Reactive: reload when context stores change (fixes empty data after login)
 	$: if (browser) loadDashboard($selectedTeamId, $selectedSeasonId);
@@ -102,19 +119,67 @@
 	</div>
 {:else}
 	<div class="space-y-6">
+		<!-- Team context -->
+		<div class="card w-full">
+			<div class="grid grid-cols-2 gap-5 md:grid-cols-4 md:divide-x md:divide-gray-200 md:dark:divide-gray-700">
+				<div class="min-w-0">
+					<div class="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+						<Building2 size={15} />
+						Club
+					</div>
+					<div class="truncate text-xl font-bold text-gray-900 dark:text-gray-100 md:text-2xl">
+						{$currentClub?.name || 'Geen club'}
+					</div>
+				</div>
+				<div class="min-w-0 md:pl-5">
+					<div class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Team</div>
+					<div class="truncate text-xl font-bold text-gray-900 dark:text-gray-100 md:text-2xl">
+						{$currentTeam?.name || 'Geen team'}
+					</div>
+				</div>
+				<div class="min-w-0 md:pl-5">
+					<div class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Seizoen</div>
+					<div class="truncate text-xl font-bold text-gray-900 dark:text-gray-100 md:text-2xl">
+						{$currentSeason?.name || 'Geen seizoen'}
+					</div>
+				</div>
+				<div class="min-w-0 md:pl-5">
+					<div class="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+						<Users size={15} />
+						Spelers
+					</div>
+					<div class="text-xl font-bold text-primary-600 md:text-2xl">{players.length}</div>
+				</div>
+			</div>
+		</div>
+
 		<!-- Quick Stats -->
-		<div class="grid grid-cols-3 gap-3">
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 			<div class="card text-center py-6">
-				<div class="text-3xl md:text-4xl font-bold text-primary-600">{players.length}</div>
-				<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Spelers</div>
+				<div class="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+					<div>
+						<div class="text-3xl md:text-4xl font-bold text-green-600">{closedTrainingCount}</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Afgerond</div>
+					</div>
+					<div>
+						<div class="text-3xl md:text-4xl font-bold text-amber-600">{plannedTrainingCount}</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Gepland</div>
+					</div>
+				</div>
+				<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-3">Trainingen</div>
 			</div>
 			<div class="card text-center py-6">
-				<div class="text-3xl md:text-4xl font-bold text-green-600">{trainings.length}</div>
-				<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Trainingen</div>
-			</div>
-			<div class="card text-center py-6">
-				<div class="text-3xl md:text-4xl font-bold text-amber-600">{matches.length}</div>
-				<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Wedstrijden</div>
+				<div class="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+					<div>
+						<div class="text-3xl md:text-4xl font-bold text-green-600">{playedMatchCount}</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Gespeeld</div>
+					</div>
+					<div>
+						<div class="text-3xl md:text-4xl font-bold text-amber-600">{plannedMatchCount}</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Gepland</div>
+					</div>
+				</div>
+				<div class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-3">Wedstrijden</div>
 			</div>
 		</div>
 
@@ -137,7 +202,10 @@
 		{#if activeTraining || openTrainings.length > 0 || closedTrainingCount > 0}
 			<div class="card">
 				<div class="flex justify-between items-center mb-4">
-					<h2 class="font-semibold text-gray-900 dark:text-gray-100">🏋️ Trainingen</h2>
+					<h2 class="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+						<Dumbbell size={20} strokeWidth={2} class="text-primary-600 dark:text-primary-400" />
+						Trainingen
+					</h2>
 					<a href="{base}/trainings" class="text-sm text-primary-600 hover:underline">Alles</a>
 				</div>
 				<div class="space-y-3">
@@ -152,39 +220,64 @@
 										{new Date(activeTraining.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
 									</a>
 									{#if att}
-										<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300 ml-2">👥 {att.present}/{att.total}</span>
+										<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300 ml-2">
+											<Users size={14} />
+											{att.present}/{att.total}
+										</span>
+									{/if}
+									{#if $canEdit}
+										<a
+											href="{base}/trainings/{activeTraining.id}/edit?returnTo={base}/"
+											class="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-green-700 transition-colors hover:bg-green-100 hover:text-green-900 dark:text-green-400 dark:hover:bg-green-800/60 dark:hover:text-green-200"
+											title="Training bewerken"
+											aria-label="Training bewerken"
+										>
+											<Pencil size={15} />
+										</a>
 									{/if}
 								</div>
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-300 mt-1 space-x-3">
-								<span class="text-sm font-semibold text-green-700 dark:text-green-400">📆 {new Date(activeTraining.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-								<span class="text-sm font-semibold text-green-700 dark:text-green-400">⏰ {new Date(activeTraining.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+							<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300 mt-1">
+								<span class="inline-flex items-center gap-1 text-sm font-semibold text-green-700 dark:text-green-400">
+									<CalendarDays size={16} />
+									{new Date(activeTraining.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+								</span>
+								<span class="inline-flex items-center gap-1 text-sm font-semibold text-green-700 dark:text-green-400">
+									<Clock size={16} />
+									{new Date(activeTraining.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}
+								</span>
 								{#if activeTraining.expand?.trainer && activeTraining.expand.trainer.length > 0}
-									<span>🧑‍🏫 {activeTraining.expand.trainer.map(t => t.name).join(', ')}</span>
+									<span class="inline-flex items-center gap-1">
+										<UserRound size={15} />
+										{activeTraining.expand.trainer.map(t => t.name).join(', ')}
+									</span>
 								{/if}
 							</div>
 							<div class="grid gap-4 mt-3 {$canEdit ? 'grid-cols-2' : 'grid-cols-1'}">
 								{#if activeTraining.content}
 									<button
 										on:click={() => lightboxTraining = activeTraining}
-										class="w-full rounded-xl bg-blue-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+										class="inline-flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-blue-700"
 									>
 										Bekijken
+										<Eye size={20} />
 									</button>
 								{:else}
 									<a
 										href="{base}/trainings/{activeTraining.id}"
-										class="w-full rounded-xl bg-blue-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+										class="inline-flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-blue-700"
 									>
 										Bekijken
+										<Eye size={20} />
 									</a>
 								{/if}
 								{#if $canEdit}
 									<a
 										href="{base}/trainings/{activeTraining.id}/checkout"
-										class="w-full rounded-xl bg-red-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-red-700"
+										class="inline-flex w-full items-center justify-center gap-3 rounded-xl bg-red-600 px-3 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-red-700"
 									>
 										Afronden
+										<CircleCheck size={20} />
 									</a>
 								{/if}
 							</div>
@@ -203,43 +296,68 @@
 										{new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
 									</a>
 									{#if att}
-										<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">👥 {att.present}/{att.total}</span>
+										<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+											<Users size={14} />
+											{att.present}/{att.total}
+										</span>
+									{/if}
+									{#if $canEdit}
+										<a
+											href="{base}/trainings/{training.id}/edit?returnTo={base}/"
+											class="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+											title="Training bewerken"
+											aria-label="Training bewerken"
+										>
+											<Pencil size={15} />
+										</a>
 									{/if}
 								</div>
 							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-3">
-								<span>📆 {new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-								<span>⏰ {new Date(training.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+							<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+								<span class="inline-flex items-center gap-1">
+									<CalendarDays size={16} />
+									{new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+								</span>
+								<span class="inline-flex items-center gap-1">
+									<Clock size={16} />
+									{new Date(training.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}
+								</span>
 								{#if training.expand?.trainer && training.expand.trainer.length > 0}
-									<span>🧑‍🏫 {training.expand.trainer.map(t => t.name).join(', ')}</span>
+									<span class="inline-flex items-center gap-1">
+										<UserRound size={15} />
+										{training.expand.trainer.map(t => t.name).join(', ')}
+									</span>
 								{/if}
 							</div>
 							<div class="grid gap-4 mt-3 {$canEdit ? 'grid-cols-2' : 'grid-cols-1'}">
 								{#if training.content}
 									<button
 										on:click={() => lightboxTraining = training}
-										class="w-full rounded-xl px-3 py-3 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+										class="inline-flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
 									>
 										Bekijken
+										<Eye size={20} />
 									</button>
 								{:else}
 									<a
 										href="{base}/trainings/{training.id}"
-										class="w-full rounded-xl px-3 py-3 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+										class="inline-flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
 									>
 										Bekijken
+										<Eye size={20} />
 									</a>
 								{/if}
 								{#if $canEdit}
 								<a
 									href="{base}/trainings/{training.id}/checkin"
-									class="w-full rounded-xl px-3 py-3 text-center text-sm font-semibold text-white transition-colors {
+									class="inline-flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-center text-sm font-semibold text-white transition-colors {
 										isPrepared
 											? 'bg-red-600 hover:bg-red-700'
 											: 'bg-gray-500 hover:bg-gray-600'
 									}"
 								>
 									Start
+									<Play size={20} />
 								</a>
 								{/if}
 							</div>
@@ -249,7 +367,10 @@
 					<!-- Link naar afgeronde trainingen -->
 					{#if closedTrainingCount > 0}
 						<a href="{base}/trainings?status=closed" class="block text-center text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 pt-1">
-							✅ Afgerond ({closedTrainingCount}) →
+							<span class="inline-flex items-center justify-center gap-1.5">
+								<CircleCheck size={16} />
+								Afgerond ({closedTrainingCount}) →
+							</span>
 						</a>
 					{/if}
 				</div>
@@ -260,7 +381,10 @@
 		{#if upcomingMatches.length > 0 || playedMatchCount > 0}
 			<div class="card !border-cyan-200 dark:!border-cyan-800/60 !bg-cyan-50/30 dark:!bg-cyan-900/10">
 				<div class="flex justify-between items-center mb-4">
-					<h2 class="font-semibold text-gray-900 dark:text-gray-100">🏐 Wedstrijden</h2>
+					<h2 class="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+						<Volleyball size={20} strokeWidth={2} class="text-cyan-600 dark:text-cyan-400" />
+						Wedstrijden
+					</h2>
 					<a href="{base}/matches" class="text-sm text-primary-600 hover:underline">Alles</a>
 				</div>
 				<div class="space-y-3">
@@ -276,31 +400,57 @@
 									</a>
 									<span class="text-xs text-gray-400 ml-1">{match.home_away === 'home' ? '(Thuis)' : '(Uit)'}</span>
 									{#if mAtt}
-										<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">👥 {mAtt.present}/{mAtt.total}</span>
+										<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+											<Users size={14} />
+											{mAtt.present}/{mAtt.total}
+										</span>
+									{/if}
+									{#if $canEdit}
+										<a
+											href="{base}/matches/{match.id}/edit?returnTo={base}/"
+											class="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-primary-400"
+											title="Wedstrijd bewerken"
+											aria-label="Wedstrijd bewerken"
+										>
+											<Pencil size={15} />
+										</a>
 									{/if}
 								</div>
 							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-3">
-								<span>📆 {new Date(match.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-								<span>⏰ {new Date(match.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+							<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+								<span class="inline-flex items-center gap-1">
+									<CalendarDays size={16} />
+									{new Date(match.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+								</span>
+								<span class="inline-flex items-center gap-1">
+									<Clock size={16} />
+									{new Date(match.date).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false })}
+								</span>
 								{#if match.expand?.coach && match.expand.coach.length > 0}
-									<span>🧑‍🏫 {match.expand.coach.map(c => c.name).join(', ')}</span>
+									<span class="inline-flex items-center gap-1">
+										<UserRound size={15} />
+										{match.expand.coach.map(c => c.name).join(', ')}
+									</span>
 								{/if}
 								{#if match.location}
-									<span>📍 {match.location}</span>
+									<span class="inline-flex items-center gap-1">
+										<MapPin size={15} />
+										{match.location}
+									</span>
 								{/if}
 							</div>
 							<div class="mt-3">
 								{#if $canEdit}
 								<a
-									href="{base}/matches/{match.id}/edit?returnTo=/"
-									class="block rounded-xl px-3 py-3 text-center text-sm font-semibold text-white transition-colors {
+									href="{base}/matches/{match.id}/edit?mode=scores&returnTo={base}/"
+									class="inline-flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-center text-sm font-semibold text-white transition-colors {
 										isMatchFinished(match)
 											? 'bg-red-600 hover:bg-red-700'
 											: 'bg-gray-500 hover:bg-gray-600'
 									}"
 								>
-									{isMatchFinished(match) ? 'Invullen' : 'Bijwerken'}
+									Scores
+									<ClipboardPenLine size={20} />
 								</a>
 								{/if}
 							</div>
@@ -310,7 +460,10 @@
 					<!-- Gespeeld link -->
 					{#if playedMatchCount > 0}
 						<a href="{base}/matches?status=played" class="block text-center text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors pt-1">
-							✅ Gespeeld ({playedMatchCount}) →
+							<span class="inline-flex items-center justify-center gap-1.5">
+								<CircleCheck size={16} />
+								Gespeeld ({playedMatchCount}) →
+							</span>
 						</a>
 					{/if}
 				</div>

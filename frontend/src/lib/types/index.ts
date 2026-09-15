@@ -174,6 +174,7 @@ export const ATTENDANCE_STATUSES_WITH_REASON: AttendanceStatus[] = ['absent', 'l
 export interface Match extends RecordModel {
 	date: string;
 	opponent: string;
+	location?: string;
 	status?: MatchStatus;
 	home_away: 'home' | 'away';
 	score_team?: number;

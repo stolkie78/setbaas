@@ -17,6 +17,7 @@
 	let matchDate = new Date().toISOString().slice(0, 10);
 	let matchTime = '19:30';
 	let opponent = '';
+	let location = '';
 	let homeAway: 'home' | 'away' = 'home';
 	let generalNotes = '';
 
@@ -207,6 +208,7 @@
 			const match = await createMatch({
 				date: new Date(`${matchDate}T${matchTime}`).toISOString(),
 				opponent: opponent.trim(),
+				location: location.trim() || undefined,
 				home_away: homeAway,
 				status: 'open',
 				score_team: scoreTeam || undefined,
@@ -279,7 +281,7 @@
 					</div>
 				</div>
 				<div>
-					<label class="label">Locatie</label>
+					<label class="label">Thuis / uit</label>
 					<div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
 						<button type="button"
 							class="flex-1 py-3 text-sm font-semibold transition-colors {homeAway === 'home' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}"
@@ -288,6 +290,11 @@
 							class="flex-1 py-3 text-sm font-semibold transition-colors {homeAway === 'away' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'}"
 							on:click={() => (homeAway = 'away')}>Uit</button>
 					</div>
+				</div>
+
+				<div>
+					<label class="label" for="location">Zaal / locatie</label>
+					<input id="location" class="input" type="text" bind:value={location} placeholder="Naam of adres van de sporthal" />
 				</div>
 			</div>
 
