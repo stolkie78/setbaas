@@ -51,7 +51,25 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
 9. **Bij twijfel stoppen en vragen**
    - Vooral bij database, restore, volumes, secrets, DNS/SSL en OAuth.
 
-## Productie-deploy checklist
+## Snelle deploy via script
+
+Je kunt op de server ook direct het geautomatiseerde deploy-script draaien:
+
+```bash
+cd /home/giedo/setbaas
+./scripts/deploy.sh
+```
+
+Dit script:
+1. Maakt en verifieert automatisch een backup met `./scripts/backup.sh`
+2. Haalt de nieuwste code op via `git fetch --tags && git pull --ff-only`
+3. Bouwt de frontend opnieuw en herstart de services (`docker-compose.prod.yml`)
+4. Voert de database-setup uit (indien nodig)
+5. Doet een healthcheck op frontend en PocketBase
+
+---
+
+## Handmatige productie-deploy checklist
 
 ### 1. Voorcontrole
 

@@ -26,19 +26,23 @@ echo ""
 
 # 2. Pull latest code
 echo "📥 Stap 2: Code ophalen..."
-git pull
+git fetch --tags
+git pull --ff-only
 
 echo ""
 
 # 3. Build and deploy
 echo "🔨 Stap 3: Build en deploy..."
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml build frontend
+docker compose -f docker-compose.prod.yml up -d
 
 echo ""
 
 # 4. Run setup (idempotent, adds new collections/fields)
 echo "⚙️  Stap 4: Database setup..."
-docker compose -f docker-compose.prod.yml --profile setup run --rm pb-setup
+if docker compose -f docker-compose.prod.yml config --profiles 2>/dev/null | grep -q setup; then
+    docker compose -f docker-compose.prod.yml --profile setup run --rm pb-setup || true
+fi
 
 echo ""
 
