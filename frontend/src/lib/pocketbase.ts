@@ -139,6 +139,7 @@ export async function createTraining(data: {
 	created_by?: string;
 	trainer?: string[];
 	duration_minutes?: number;
+	location?: string;
 }): Promise<Training> {
 	return pb.collection('trainings').create<Training>(data);
 }

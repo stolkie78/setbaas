@@ -10,6 +10,9 @@
 	import AttendanceStatusSwitcher from '$lib/components/AttendanceStatusSwitcher.svelte';
 	import LoadReport from '$lib/components/LoadReport.svelte';
 	import { fetchPlayerLoad, type PlayerLoad } from '$lib/utils/load';
+	import { EXTRA_ACTIVITY_LABELS } from '$lib/types';
+	import type { ExtraActivityType } from '$lib/types';
+	import { Plus, Pencil, Trash2, X } from 'lucide-svelte';
 
 	let trainings: Training[] = [];
 	let matches: Match[] = [];
@@ -29,6 +32,16 @@
 	let playerLoad: PlayerLoad | null = null;
 	let loadMonthOffset = 0;
 	let savingExtra = false;
+
+	// Self-service activity form state
+	let showActivityForm = false;
+	let editingIndex: number | null = null;
+	let formType: ExtraActivityType = 'training';
+	let formTeamName = '';
+	let formHours = 1.5;
+	let formNotes = '';
+	let extraSaveMessage = '';
+	let extraErrorMessage = '';
 
 	$: playerId = $linkedPlayer?.id;
 
@@ -108,10 +121,12 @@
 	async function loadPlayerLoad(
 		currentPlayerId = playerId,
 		teamId = $selectedTeamId,
-		seasonId = $selectedSeasonId
+		seasonId = $selectedSeasonId,
+		extrasOverride?: ExtraActivity[]
 	) {
 		if (!currentPlayerId || !teamId || !seasonId) return;
-		playerLoad = await fetchPlayerLoad(currentPlayerId, $linkedPlayer?.extra_activities || [], {
+		const extras = extrasOverride !== undefined ? extrasOverride : ($linkedPlayer?.extra_activities || []);
+		playerLoad = await fetchPlayerLoad(currentPlayerId, Array.isArray(extras) ? extras : [], {
 			teamId,
 			seasonId,
 			monthOffset: loadMonthOffset,
@@ -123,52 +138,96 @@
 		loadPlayerLoad();
 	}
 
-	async function addOwnExtraTraining() {
+	function openAddActivity() {
+		editingIndex = null;
+		formType = 'training';
+		formTeamName = '';
+		formHours = 1.5;
+		formNotes = '';
+		extraErrorMessage = '';
+		extraSaveMessage = '';
+		showActivityForm = true;
+	}
+
+	function openEditActivity(index: number) {
+		const extras = Array.isArray($linkedPlayer?.extra_activities) ? $linkedPlayer.extra_activities : [];
+		const act = extras[index];
+		if (!act) return;
+		editingIndex = index;
+		formType = act.type || 'training';
+		formTeamName = act.team_name || '';
+		formHours = Number(act.hours) || 1.5;
+		formNotes = act.notes || '';
+		extraErrorMessage = '';
+		extraSaveMessage = '';
+		showActivityForm = true;
+	}
+
+	function cancelActivityForm() {
+		showActivityForm = false;
+		editingIndex = null;
+		extraErrorMessage = '';
+	}
+
+	async function saveActivityForm() {
 		if (!playerId || savingExtra) return;
+		if (!formHours || formHours <= 0) {
+			extraErrorMessage = 'Vul een geldig aantal uren per week in (bijv. 1.5)';
+			return;
+		}
+
 		savingExtra = true;
+		extraErrorMessage = '';
+		extraSaveMessage = '';
+
 		try {
-			const current = $linkedPlayer?.extra_activities || [];
-			const next: ExtraActivity[] = [
-				...current,
-				{ type: 'training', hours: 1.5, source: 'player', notes: 'Zelf toegevoegd' },
-			];
+			const current = Array.isArray($linkedPlayer?.extra_activities) ? [...$linkedPlayer.extra_activities] : [];
+			const item: ExtraActivity = {
+				type: formType,
+				team_name: formTeamName.trim() || undefined,
+				hours: Number(formHours),
+				notes: formNotes.trim() || undefined,
+				source: 'player',
+			};
+
+			let next: ExtraActivity[];
+			if (editingIndex !== null && editingIndex >= 0 && editingIndex < current.length) {
+				current[editingIndex] = item;
+				next = current;
+			} else {
+				next = [...current, item];
+			}
+
 			const updated = await updatePlayerExtraActivities(playerId, next);
 			linkedPlayer.set(updated);
-			await loadPlayerLoad();
+			await loadPlayerLoad(playerId, $selectedTeamId, $selectedSeasonId, updated.extra_activities);
+			showActivityForm = false;
+			editingIndex = null;
+			extraSaveMessage = '✅ Extra activiteit opgeslagen';
+			setTimeout(() => { extraSaveMessage = ''; }, 3000);
 		} catch (e) {
-			console.error('Failed to add own extra training:', e);
+			console.error('Failed to save activity:', e);
+			extraErrorMessage = 'Fout bij opslaan: ' + (e instanceof Error ? e.message : String(e));
 		} finally {
 			savingExtra = false;
 		}
 	}
 
-	async function updateOwnExtraTraining(index: number, hours: number) {
+	async function removeActivity(index: number) {
 		if (!playerId || savingExtra) return;
+		if (!confirm('Weet je zeker dat je deze extra activiteit wilt verwijderen?')) return;
 		savingExtra = true;
 		try {
-			const current = [...($linkedPlayer?.extra_activities || [])];
-			if (!current[index]) return;
-			current[index] = { ...current[index], hours };
-			const updated = await updatePlayerExtraActivities(playerId, current);
+			const current = Array.isArray($linkedPlayer?.extra_activities) ? [...$linkedPlayer.extra_activities] : [];
+			const next = current.filter((_, i) => i !== index);
+			const updated = await updatePlayerExtraActivities(playerId, next);
 			linkedPlayer.set(updated);
-			await loadPlayerLoad();
+			await loadPlayerLoad(playerId, $selectedTeamId, $selectedSeasonId, updated.extra_activities);
+			extraSaveMessage = '✅ Activiteit verwijderd';
+			setTimeout(() => { extraSaveMessage = ''; }, 3000);
 		} catch (e) {
-			console.error('Failed to update own extra training:', e);
-		} finally {
-			savingExtra = false;
-		}
-	}
-
-	async function removeOwnExtraTraining(index: number) {
-		if (!playerId || savingExtra) return;
-		savingExtra = true;
-		try {
-			const current = ($linkedPlayer?.extra_activities || []).filter((_, i) => i !== index);
-			const updated = await updatePlayerExtraActivities(playerId, current);
-			linkedPlayer.set(updated);
-			await loadPlayerLoad();
-		} catch (e) {
-			console.error('Failed to remove own extra training:', e);
+			console.error('Failed to remove activity:', e);
+			alert('Fout bij verwijderen: ' + (e instanceof Error ? e.message : String(e)));
 		} finally {
 			savingExtra = false;
 		}
@@ -440,53 +499,201 @@
 			onNextMonth={() => changeLoadMonth(1)}
 		/>
 
-		<!-- Self-service: extra weekly training on top of the team schedule -->
-		<div class="card space-y-2">
+		<!-- Self-service: extra weekly activities on top of the team schedule -->
+		<div class="card space-y-3">
 			<div class="flex items-center justify-between">
-				<h3 class="font-semibold text-gray-800 dark:text-gray-200">➕ Eigen extra training</h3>
-				<button
-					type="button"
-					class="text-xs font-semibold text-primary-600 dark:text-primary-400 disabled:opacity-50"
-					disabled={savingExtra}
-					on:click={addOwnExtraTraining}
-				>
-					+ Toevoegen
-				</button>
+				<div>
+					<h3 class="font-semibold text-gray-800 dark:text-gray-200">Eigen extra belasting & activiteiten</h3>
+					<p class="text-xs text-gray-500 dark:text-gray-400">
+						Trainingen, wedstrijden of krachttraining naast dit team
+					</p>
+				</div>
+				{#if !showActivityForm}
+					<button
+						type="button"
+						class="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50"
+						disabled={savingExtra}
+						on:click={openAddActivity}
+					>
+						<Plus size={15} />
+						Activiteit toevoegen
+					</button>
+				{/if}
 			</div>
-			{#if ($linkedPlayer?.extra_activities || []).filter((a) => a.source === 'player').length === 0}
-				<p class="text-sm text-gray-500 dark:text-gray-400">
-					Train je ergens extra naast dit team? Voeg hier je eigen wekelijkse training toe, dan
-					telt die automatisch mee in je belasting.
-				</p>
-			{:else}
-				<div class="space-y-1.5">
-					{#each $linkedPlayer?.extra_activities || [] as activity, i}
-						{#if activity.source === 'player'}
-							<div class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-								<span class="text-sm text-gray-700 dark:text-gray-300 flex-1">Extra training</span>
+
+			{#if extraSaveMessage}
+				<div class="p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-xs font-medium text-green-700 dark:text-green-300">
+					{extraSaveMessage}
+				</div>
+			{/if}
+
+			<!-- Inline Add / Edit Form -->
+			{#if showActivityForm}
+				<div class="p-4 rounded-xl border border-primary-200 dark:border-primary-800/60 bg-primary-50/40 dark:bg-primary-900/15 space-y-3">
+					<div class="flex items-center justify-between border-b border-primary-200 dark:border-primary-800/40 pb-2">
+						<h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+							{editingIndex !== null ? 'Activiteit bewerken' : 'Nieuwe activiteit toevoegen'}
+						</h4>
+						<button
+							type="button"
+							class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+							on:click={cancelActivityForm}
+						>
+							<X size={16} />
+						</button>
+					</div>
+
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						<div>
+							<label class="label text-xs" for="extra-type">Type activiteit</label>
+							<select id="extra-type" class="input text-sm py-1.5" bind:value={formType}>
+								<option value="training">Extra training</option>
+								<option value="match">Extra wedstrijd (invallen)</option>
+								<option value="strength">Krachttraining / fitness</option>
+								<option value="other">Overig / Andere sport</option>
+							</select>
+						</div>
+
+						<div>
+							<label class="label text-xs" for="extra-team">Team / Omschrijving</label>
+							<input
+								id="extra-team"
+								type="text"
+								class="input text-sm py-1.5"
+								placeholder="Bijv. Heren 2, Basic Fit, Beach..."
+								bind:value={formTeamName}
+							/>
+						</div>
+
+						<div>
+							<label class="label text-xs" for="extra-hours">Uren per week</label>
+							<div class="flex items-center gap-2">
 								<input
+									id="extra-hours"
 									type="number"
-									min="0"
+									min="0.5"
+									max="30"
 									step="0.5"
-									class="input w-20 text-sm py-1"
-									value={activity.hours ?? 0}
-									disabled={savingExtra}
-									on:change={(e) => {
-										const target = e.currentTarget;
-										updateOwnExtraTraining(i, Number(target.value));
-									}}
+									class="input text-sm py-1.5 w-24"
+									bind:value={formHours}
+									required
 								/>
-								<span class="text-xs text-gray-400">u/wk</span>
-								<button
-									type="button"
-									class="text-xs text-red-500 disabled:opacity-50"
-									disabled={savingExtra}
-									on:click={() => removeOwnExtraTraining(i)}
-								>
-									Verwijderen
-								</button>
+								<span class="text-xs text-gray-500">uur / week</span>
 							</div>
-						{/if}
+						</div>
+
+						<div>
+							<label class="label text-xs" for="extra-notes">Notities (optioneel)</label>
+							<input
+								id="extra-notes"
+								type="text"
+								class="input text-sm py-1.5"
+								placeholder="Bijv. Maandagavond"
+								bind:value={formNotes}
+							/>
+						</div>
+					</div>
+
+					{#if extraErrorMessage}
+						<p class="text-xs text-red-500 font-medium">{extraErrorMessage}</p>
+					{/if}
+
+					<div class="flex items-center justify-end gap-2 pt-1">
+						<button
+							type="button"
+							class="btn-secondary text-xs py-1.5 px-3"
+							on:click={cancelActivityForm}
+							disabled={savingExtra}
+						>
+							Annuleren
+						</button>
+						<button
+							type="button"
+							class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5"
+							on:click={saveActivityForm}
+							disabled={savingExtra}
+						>
+							{savingExtra ? 'Opslaan...' : 'Opslaan'}
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Activities List -->
+			{#if (!Array.isArray($linkedPlayer?.extra_activities) || $linkedPlayer.extra_activities.length === 0) && !showActivityForm}
+				<div class="p-3 text-center bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						Nog geen eigen extra trainingen of sportactiviteiten toegevoegd.
+					</p>
+					<button
+						type="button"
+						class="mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+						on:click={openAddActivity}
+					>
+						+ Voeg je eerste activiteit toe
+					</button>
+				</div>
+			{:else}
+				<div class="space-y-2">
+					{#each ($linkedPlayer?.extra_activities || []) as activity, i}
+						{@const isPlayerAdded = activity.source === 'player'}
+						{@const typeLabel = EXTRA_ACTIVITY_LABELS[activity.type] || activity.type}
+						<div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl gap-2 border border-gray-100 dark:border-gray-700/60">
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-2 flex-wrap">
+									<span class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+										{typeLabel}
+									</span>
+									{#if activity.team_name}
+										<span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+											{activity.team_name}
+										</span>
+									{/if}
+									{#if !isPlayerAdded}
+										<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+											Trainer
+										</span>
+									{/if}
+								</div>
+								{#if activity.notes}
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activity.notes}</p>
+								{/if}
+							</div>
+
+							<div class="flex items-center gap-3 self-end sm:self-center">
+								<div class="flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-gray-200">
+									<span>{activity.hours ?? 0} u/wk</span>
+									<span class="text-xs text-gray-400 font-normal">
+										(ca. {Math.round((Number(activity.hours) || 0) * (52 / 12) * 10) / 10} u/mnd)
+									</span>
+								</div>
+
+								{#if isPlayerAdded}
+									<div class="flex items-center gap-1">
+										<button
+											type="button"
+											class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+											title="Bewerken"
+											aria-label="Activiteit bewerken"
+											on:click={() => openEditActivity(i)}
+											disabled={savingExtra}
+										>
+											<Pencil size={15} />
+										</button>
+										<button
+											type="button"
+											class="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+											title="Verwijderen"
+											aria-label="Activiteit verwijderen"
+											on:click={() => removeActivity(i)}
+											disabled={savingExtra}
+										>
+											<Trash2 size={15} />
+										</button>
+									</div>
+								{/if}
+							</div>
+						</div>
 					{/each}
 				</div>
 			{/if}

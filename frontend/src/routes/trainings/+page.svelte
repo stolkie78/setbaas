@@ -8,7 +8,7 @@
 	import { ATTENDANCE_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId, trainingsSortOrder } from '$lib/stores/context';
 	import { contextFilter } from '$lib/stores/context';
-	import { ArrowDownUp, Plus } from 'lucide-svelte';
+	import { ArrowDownUp, MapPin, Plus } from 'lucide-svelte';
 
 	const HAPPINESS_EMOJIS = ['', '😢', '😕', '😐', '😊', '🤩'];
 	const FITNESS_EMOJIS = ['', '🥱', '😴', '💪', '🔥', '⚡'];
@@ -196,6 +196,12 @@
 					{#if training.general_comments && expandedId !== training.id}
 						<p class="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">{training.general_comments}</p>
 					{/if}
+					{#if training.location}
+						<p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1.5">
+							<MapPin size={13} class="text-gray-400 flex-shrink-0" />
+							{training.location}
+						</p>
+					{/if}
 					{#if training.expand?.created_by}
 						<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Aangemaakt door {training.expand.created_by.name || training.expand.created_by.email}</p>
 					{/if}
@@ -251,7 +257,7 @@
 			</div>
 			<!-- Content -->
 			<div class="flex-1 overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-				<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+				<div class="grid grid-cols-2 {lightboxTraining.location ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3 mb-6">
 					<div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
 						<p class="text-xs text-gray-500 dark:text-gray-400">Status</p>
 						<p class="font-semibold text-gray-900 dark:text-gray-100">{statusLabels[lightboxTraining.status || 'open']}</p>
@@ -266,6 +272,12 @@
 							{lightboxTraining.expand?.trainer?.map(trainer => trainer.name || trainer.email).join(', ') || 'Niet toegewezen'}
 						</p>
 					</div>
+					{#if lightboxTraining.location}
+						<div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
+							<p class="text-xs text-gray-500 dark:text-gray-400">Sporthal / Locatie</p>
+							<p class="font-semibold text-gray-900 dark:text-gray-100">{lightboxTraining.location}</p>
+						</div>
+					{/if}
 					<div class="rounded-xl bg-gray-50 dark:bg-gray-800 p-3">
 						<p class="text-xs text-gray-500 dark:text-gray-400">Trainingsscore</p>
 						<p class="font-semibold text-gray-900 dark:text-gray-100">

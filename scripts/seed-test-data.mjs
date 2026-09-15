@@ -83,6 +83,23 @@ async function main() {
     });
   }
 
+  // Ensure test player user speler@setbaas.nl exists
+  let spelerUser;
+  try {
+    spelerUser = await pb.collection('users').getFirstListItem('email = "speler@setbaas.nl"');
+    console.log(`  ✓ User speler@setbaas.nl exists (${spelerUser.id})`);
+  } catch {
+    spelerUser = await pb.collection('users').create({
+      email: 'speler@setbaas.nl',
+      password: 'SetBaas2026!',
+      passwordConfirm: 'SetBaas2026!',
+      name: 'Emma van Dijk',
+      verified: true,
+      is_platform_admin: false,
+    });
+    console.log(`  ✓ User speler@setbaas.nl created (${spelerUser.id})`);
+  }
+
   // 3. Create Season
   console.log('📅 Creating Season 2026-2027...');
   const season = await pb.collection('seasons').create({
@@ -153,7 +170,7 @@ async function main() {
         role: 'admin',
         default_team: defaultTeam,
         is_trainer: true,
-        is_player: false,
+        is_player: true,
       });
     }
 
@@ -163,9 +180,31 @@ async function main() {
         team: team.id,
         role: 'admin',
         is_trainer: true,
-        is_player: false,
+        is_player: true,
       });
     }
+  }
+
+  // Access for player user
+  for (const club of [clubZovoc, clubZVH]) {
+    const defaultTeam = club.id === clubZovoc.id ? zovocTeams[0].id : zvhTeams[0].id;
+    await pb.collection('club_access').create({
+      user: spelerUser.id,
+      club: club.id,
+      role: 'user',
+      default_team: defaultTeam,
+      is_trainer: false,
+      is_player: true,
+    });
+  }
+  for (const team of allTeams) {
+    await pb.collection('team_access').create({
+      user: spelerUser.id,
+      team: team.id,
+      role: 'user',
+      is_trainer: false,
+      is_player: true,
+    });
   }
 
   // 7. Create Standard Competencies
@@ -256,12 +295,30 @@ async function main() {
     teamPlayersMap[team.id] = [];
 
     for (const p of list) {
+      let linkedUserId = '';
+      let extraActivities = null;
+
+      if (p.name === 'Emma van Dijk') {
+        linkedUserId = spelerUser.id;
+        extraActivities = [
+          { type: 'training', hours: 2, team_name: 'Zovoc Dames 2', notes: 'Mee-trainen op donderdag', source: 'coach' },
+          { type: 'strength', hours: 1.5, team_name: 'Basic-Fit Zoetermeer', notes: 'Krachttraining', source: 'player' },
+        ];
+      } else if (p.name === 'Daan Jansen') {
+        linkedUserId = coachUser.id;
+        extraActivities = [
+          { type: 'training', hours: 1.5, team_name: 'Selectietraining', notes: 'Regionale selectie', source: 'player' },
+        ];
+      }
+
       const playerRecord = await pb.collection('players').create({
         name: p.name,
         position: p.position,
         jersey_number: p.jersey_number,
         status: 'active',
-        email: `${p.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@example.com`,
+        email: p.name === 'Emma van Dijk' ? 'speler@setbaas.nl' : `${p.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@example.com`,
+        user_id: linkedUserId || undefined,
+        extra_activities: extraActivities || undefined,
       });
 
       await pb.collection('team_players').create({
@@ -280,6 +337,7 @@ async function main() {
 
   for (const team of allTeams) {
     const players = teamPlayersMap[team.id];
+    const defaultHall = team.name.includes('Zovoc') ? 'Sporthal De Veur - Zaal 1' : 'Sporthal Swanla, Zevenhuizen';
 
     // Closed Training 1 (Afgerond)
     const t1 = await pb.collection('trainings').create({
@@ -290,6 +348,7 @@ async function main() {
       status: 'closed',
       overall_rating: 8,
       trainer: [coachUser.id],
+      location: defaultHall,
       general_comments: 'Goede intensiteit bij pass- en aanvalsoefeningen.',
     });
 
@@ -302,6 +361,7 @@ async function main() {
       status: 'closed',
       overall_rating: 7,
       trainer: [coachUser.id],
+      location: defaultHall,
       general_comments: 'Blok-verdediging en side-out patronen.',
     });
 
@@ -313,6 +373,7 @@ async function main() {
       duration_minutes: 90,
       status: 'open',
       trainer: [coachUser.id],
+      location: defaultHall,
       general_comments: 'Voorbereiding op de zaterdagwedstrijd.',
     });
 

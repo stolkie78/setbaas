@@ -6,7 +6,7 @@
 	import type { Training, TrainingAttendance } from '$lib/types';
 	import { ATTENDANCE_LABELS, ATTENDANCE_STYLES } from '$lib/types';
 	import { marked } from 'marked';
-	import { CircleCheck, FileDown, Pencil } from 'lucide-svelte';
+	import { CircleCheck, FileDown, MapPin, Pencil } from 'lucide-svelte';
 
 	const HAPPINESS_EMOJIS = ['😢', '😕', '😐', '😊', '🤩'];
 	const HAPPINESS_LABELS = ['Baal', 'Meh', 'Oké', 'Blij', 'Super!'];
@@ -77,9 +77,17 @@
 {:else}
 	<div class="max-w-2xl mx-auto space-y-4">
 		<div class="flex justify-between items-center">
-			<h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">
-				Training {new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-			</h1>
+			<div>
+				<h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+					Training {new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+				</h1>
+				{#if training.location}
+					<p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-0.5">
+						<MapPin size={15} class="text-gray-400" />
+						{training.location}
+					</p>
+				{/if}
+			</div>
 			<div class="flex gap-2 no-print">
 				{#if training.status === 'active'}
 					<a

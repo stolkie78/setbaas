@@ -66,6 +66,7 @@
 	let trainingDate = '';
 	let trainingTime = '17:30';
 	let durationMinutes = 90;
+	let trainingLocation = '';
 	let overallRating = 7;
 	let generalComments = '';
 	let selectedTemplate = '';
@@ -112,6 +113,7 @@
 			trainingStatus = (training.status as 'open' | 'active' | 'closed') || 'closed';
 			formContent = training.content || '';
 			durationMinutes = training.duration_minutes || 90;
+			trainingLocation = training.location || '';
 			selectedTrainers = Array.isArray(training.trainer) ? training.trainer : training.trainer ? [training.trainer] : [];
 
 			// Load trainers
@@ -195,6 +197,7 @@
 				content: formContent || undefined,
 				trainer: selectedTrainers,
 				duration_minutes: durationMinutes || undefined,
+				location: trainingLocation.trim() || undefined,
 			});
 
 			// Update/create attendance records
@@ -301,6 +304,11 @@
 			<div>
 				<label class="label" for="duration">Duur (minuten)</label>
 				<input id="duration" class="input w-28" type="number" min="0" max="480" step="5" bind:value={durationMinutes} />
+			</div>
+
+			<div>
+				<label class="label" for="location">Sporthal / locatie</label>
+				<input id="location" class="input" type="text" placeholder="Bijv. Sporthal De Veur / Veld 2" bind:value={trainingLocation} />
 			</div>
 
 			<!-- Trainer checkboxes -->

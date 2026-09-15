@@ -252,6 +252,12 @@
 										{activeTraining.expand.trainer.map(t => t.name).join(', ')}
 									</span>
 								{/if}
+								{#if activeTraining.location}
+									<span class="inline-flex items-center gap-1">
+										<MapPin size={15} />
+										{activeTraining.location}
+									</span>
+								{/if}
 							</div>
 							<div class="grid gap-4 mt-3 {$canEdit ? 'grid-cols-2' : 'grid-cols-1'}">
 								{#if activeTraining.content}
@@ -326,6 +332,12 @@
 									<span class="inline-flex items-center gap-1">
 										<UserRound size={15} />
 										{training.expand.trainer.map(t => t.name).join(', ')}
+									</span>
+								{/if}
+								{#if training.location}
+									<span class="inline-flex items-center gap-1">
+										<MapPin size={15} />
+										{training.location}
 									</span>
 								{/if}
 							</div>

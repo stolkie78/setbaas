@@ -332,7 +332,8 @@ ensure_collection "{
     {\"name\": \"created_by\", \"type\": \"relation\", \"required\": false, \"collectionId\": \"_pb_users_auth_\", \"maxSelect\": 1},
     {\"name\": \"trainer\", \"type\": \"relation\", \"required\": false, \"collectionId\": \"_pb_users_auth_\", \"maxSelect\": 10},
     {\"name\": \"checkout_question\", \"type\": \"text\", \"required\": false},
-    {\"name\": \"duration_minutes\", \"type\": \"number\", \"required\": false, \"onlyInt\": true, \"min\": 0, \"max\": 480}
+    {\"name\": \"duration_minutes\", \"type\": \"number\", \"required\": false, \"onlyInt\": true, \"min\": 0, \"max\": 480},
+    {\"name\": \"location\", \"type\": \"text\", \"required\": false}
   ],
   \"listRule\": \"@request.auth.id != \\\"\\\"\",
   \"viewRule\": \"@request.auth.id != \\\"\\\"\",

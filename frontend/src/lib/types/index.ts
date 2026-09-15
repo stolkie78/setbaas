@@ -15,11 +15,13 @@ export interface Player extends RecordModel {
 	extra_activities?: ExtraActivity[];
 }
 
-export type ExtraActivityType = 'training' | 'match';
+export type ExtraActivityType = 'training' | 'match' | 'strength' | 'other';
 
 export const EXTRA_ACTIVITY_LABELS: Record<ExtraActivityType, string> = {
-	training: 'Training',
-	match: 'Wedstrijden',
+	training: 'Extra training',
+	match: 'Extra wedstrijden',
+	strength: 'Krachttraining',
+	other: 'Overig / Andere sport',
 };
 
 /**
@@ -127,6 +129,7 @@ export interface Training extends RecordModel {
 	trainer?: string[];
 	checkout_question?: string;
 	duration_minutes?: number;
+	location?: string;
 	expand?: {
 		template?: TrainingTemplate;
 		created_by?: { id: string; name: string; email: string };

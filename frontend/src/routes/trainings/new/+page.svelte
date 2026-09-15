@@ -70,6 +70,7 @@
 	let trainingDate = new Date().toISOString().slice(0, 10);
 	let trainingTime = '17:30';
 	let durationMinutes = 90;
+	let trainingLocation = '';
 	let overallRating = 7;
 	let generalComments = '';
 	let selectedTemplate = '';
@@ -164,6 +165,7 @@
 				created_by: $authUser?.id || undefined,
 				trainer: selectedTrainers.length > 0 ? selectedTrainers : undefined,
 				duration_minutes: durationMinutes || undefined,
+				location: trainingLocation.trim() || undefined,
 			});
 
 			// 2. Create attendance records
@@ -236,6 +238,11 @@
 			<div>
 				<label class="label" for="duration">Duur (minuten)</label>
 				<input id="duration" class="input w-28" type="number" min="0" max="480" step="5" bind:value={durationMinutes} />
+			</div>
+
+			<div>
+				<label class="label" for="location">Sporthal / locatie</label>
+				<input id="location" class="input" type="text" placeholder="Bijv. Sporthal De Veur / Veld 2" bind:value={trainingLocation} />
 			</div>
 
 			<!-- Trainer checkboxes -->

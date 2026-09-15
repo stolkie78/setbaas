@@ -42,6 +42,7 @@
 	// === Training Schedule Generator ===
 	let scheduleDays: number[] = []; // 0=zo, 1=ma, ..., 6=za
 	let scheduleTime = '17:30';
+	let scheduleLocation = '';
 	let scheduleStart = '';
 	let scheduleEnd = '';
 	let scheduleGenerating = false;
@@ -98,7 +99,8 @@
 					season: $selectedSeasonId,
 					status: 'open',
 					content: '',
-					...(trainerId ? { trainer: trainerId } : {}),
+					location: scheduleLocation.trim() || undefined,
+					...(trainerId ? { trainer: [trainerId] } : {}),
 				});
 				created++;
 			}
@@ -1258,10 +1260,16 @@
 					</div>
 				</div>
 
-				<!-- Time -->
-				<div class="mb-4">
-					<label class="label" for="schedule-time">Starttijd</label>
-					<input id="schedule-time" type="time" class="input w-32" bind:value={scheduleTime} />
+				<!-- Time & Location -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+					<div>
+						<label class="label" for="schedule-time">Starttijd</label>
+						<input id="schedule-time" type="time" class="input w-32" bind:value={scheduleTime} />
+					</div>
+					<div>
+						<label class="label" for="schedule-location">Sporthal / locatie</label>
+						<input id="schedule-location" type="text" class="input" placeholder="Bijv. Sporthal De Veur" bind:value={scheduleLocation} />
+					</div>
 				</div>
 
 				<!-- Trainer per dag -->
