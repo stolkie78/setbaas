@@ -24,6 +24,8 @@
 					expand: 'player,competency,created_by',
 				}),
 			]);
+			const playerIds = new Set(players.map(player => player.id));
+			allScores = allScores.filter(score => playerIds.has(score.player));
 		} catch (e) {
 			console.error('Failed to load data:', e);
 		} finally {

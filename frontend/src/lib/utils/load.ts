@@ -2,7 +2,7 @@ import { pb } from '$lib/pocketbase';
 import { EXTRA_ACTIVITY_LABELS } from '$lib/types';
 import type { ExtraActivity } from '$lib/types';
 
-/** Trainingen en wedstrijden hebben geen duurveld, dus rekenen we met vaste blokken. */
+/** Fallback voor trainingen zonder ingevulde duur; wedstrijden tellen als vast blok. */
 export const TRAINING_HOURS = 1.5;
 export const MATCH_HOURS = 1.5;
 
@@ -73,6 +73,8 @@ export async function fetchPlayerLoad(
 
 	let trainingCount = 0;
 	let trainingAbsences = 0;
+	let trainingPlannedHours = 0;
+	let trainingAbsentHours = 0;
 	let matchCount = 0;
 	let matchAbsences = 0;
 
@@ -83,11 +85,18 @@ export async function fetchPlayerLoad(
 			const filter = filters.join(' && ');
 
 			const [trainings, matches] = await Promise.all([
-				pb.collection('trainings').getFullList({ filter, fields: 'id' }),
+				pb.collection('trainings').getFullList({ filter, fields: 'id,duration_minutes' }),
 				pb.collection('matches').getFullList({ filter, fields: 'id' }),
 			]);
 			trainingCount = trainings.length;
 			matchCount = matches.length;
+			const trainingHoursById = new Map(
+				trainings.map((training: any) => [
+					training.id,
+					round(((Number(training.duration_minutes) || TRAINING_HOURS * 60) / 60)),
+				])
+			);
+			trainingPlannedHours = round([...trainingHoursById.values()].reduce((sum, hours) => sum + hours, 0));
 
 			if (trainingCount > 0) {
 				const idFilter = trainings.map((t) => `training = "${t.id}"`).join(' || ');
@@ -96,7 +105,12 @@ export async function fetchPlayerLoad(
 				});
 				// Geen record betekent "normaal aanwezig"; alleen een expliciete
 				// niet-aanwezige status telt als afwezigheid.
-				trainingAbsences = records.filter((r: any) => r.status !== 'present').length;
+				const absentRecords = records.filter((r: any) => r.status !== 'present');
+				trainingAbsences = absentRecords.length;
+				trainingAbsentHours = round(absentRecords.reduce(
+					(sum: number, record: any) => sum + (trainingHoursById.get(record.training) || TRAINING_HOURS),
+					0
+				));
 			}
 			if (matchCount > 0) {
 				const idFilter = matches.map((m) => `match = "${m.id}"`).join(' || ');
@@ -125,6 +139,8 @@ export async function fetchPlayerLoad(
 		month,
 		trainingCount,
 		trainingAbsences,
+		trainingPlannedHours,
+		trainingAbsentHours,
 		matchCount,
 		matchAbsences,
 		extras: extras || [],
@@ -136,12 +152,16 @@ export function buildPlayerLoad(input: {
 	month: MonthRange;
 	trainingCount: number;
 	trainingAbsences: number;
+	trainingPlannedHours?: number;
+	trainingAbsentHours?: number;
 	matchCount: number;
 	matchAbsences: number;
 	extras: ExtraActivity[];
 	teamNames?: Record<string, string>;
 }): PlayerLoad {
-	const trainingHours = (input.trainingCount - input.trainingAbsences) * TRAINING_HOURS;
+	const trainingPlannedHours = input.trainingPlannedHours ?? input.trainingCount * TRAINING_HOURS;
+	const trainingAbsentHours = input.trainingAbsentHours ?? input.trainingAbsences * TRAINING_HOURS;
+	const trainingHours = trainingPlannedHours - trainingAbsentHours;
 	const matchHours = (input.matchCount - input.matchAbsences) * MATCH_HOURS;
 
 	const lines: LoadLine[] = [];

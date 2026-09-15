@@ -11,6 +11,16 @@
 			description: 'Overzicht van aan- en afwezigheid per speler over afgeronde trainingen.',
 		},
 		{
+			href: '/reports/match-attendance',
+			title: 'Wedstrijdaanwezigheid',
+			description: 'Overzicht van aan- en afwezigheid per speler over gespeelde wedstrijden.',
+		},
+		{
+			href: '/reports/trainer-attendance',
+			title: 'Aanwezigheid per trainer',
+			description: 'Gemiddelde spelersopkomst per trainer over afgeronde trainingen.',
+		},
+		{
 			href: '/reports/wellness',
 			title: 'Welzijn & Fitheid',
 			description: 'Happiness en fitheid per speler binnen het geselecteerde team en seizoen.',

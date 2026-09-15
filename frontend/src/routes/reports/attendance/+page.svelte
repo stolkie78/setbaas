@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { getContextPlayers, getTrainings } from '$lib/pocketbase';
+	import { getContextPlayers } from '$lib/pocketbase';
 	import { pb } from '$lib/pocketbase';
 	import type { Player, Training, TrainingAttendance } from '$lib/types';
-	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
+	import { contextFilter, selectedTeamId, selectedSeasonId } from '$lib/stores/context';
 
 	let players: Player[] = [];
 	let trainings: Training[] = [];
@@ -26,11 +26,11 @@
 		try {
 			[players, trainings] = await Promise.all([
 				getContextPlayers($selectedTeamId, $selectedSeasonId),
-				getTrainings(),
+				pb.collection('trainings').getFullList<Training>({
+					filter: `${contextFilter($selectedTeamId, $selectedSeasonId)} && status = "closed"`,
+					sort: '-date',
+				}),
 			]);
-
-			// Only count closed (afgeronde) trainings
-			const closedTrainings = trainings.filter(t => t.status === 'closed');
 
 			const allAttendance = await pb.collection('training_attendance').getFullList<TrainingAttendance>({
 				expand: 'player,training',
@@ -38,7 +38,7 @@
 			});
 
 			// Build a set of closed training IDs for filtering
-			const closedIds = new Set(closedTrainings.map(t => t.id));
+			const closedIds = new Set(trainings.map(t => t.id));
 
 			for (const att of allAttendance) {
 				if (!closedIds.has(att.training)) continue;
@@ -52,7 +52,7 @@
 				const absent = records.filter((r) => r.status === 'absent').length;
 				const sick = records.filter((r) => r.status === 'sick').length;
 				const injured = records.filter((r) => r.status === 'injured').length;
-				const total = closedTrainings.length;
+				const total = trainings.length;
 				const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
 				return { player, total, present, absent, sick, injured, percentage };
@@ -97,7 +97,7 @@
 		<div class="card">
 			<div class="grid grid-cols-2 gap-3 text-center">
 				<div>
-					<div class="text-2xl font-bold text-primary-600">{trainings.filter(t => t.status === 'closed').length}</div>
+					<div class="text-2xl font-bold text-primary-600">{trainings.length}</div>
 					<div class="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">Afgeronde trainingen</div>
 				</div>
 				<div>
