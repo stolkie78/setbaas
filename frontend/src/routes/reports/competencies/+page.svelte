@@ -5,6 +5,7 @@
 	import type { Player, Competency, PlayerCompetency } from '$lib/types';
 	import { CATEGORY_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
+	import { Plus } from 'lucide-svelte';
 
 	let players: Player[] = [];
 	let competencies: Competency[] = [];
@@ -115,10 +116,19 @@
 
 <div class="space-y-4">
 	<div class="flex justify-between items-center">
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Competenties</h2>
+		<div>
+			<a href="{base}/reports" class="text-primary-600 text-sm hover:underline">← Rapportages</a>
+			<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mt-1">Competenties</h2>
+		</div>
 		<div class="flex gap-2">
-			<a href="{base}/competencies/new" class="btn-primary text-sm">+ Meting</a>
-			<a href="{base}/reports" class="text-sm text-primary-600 hover:underline self-center">← Terug</a>
+			<a
+				href="{base}/competencies/new"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700"
+				title="Nieuwe meting"
+				aria-label="Nieuwe meting"
+			>
+				<Plus size={24} />
+			</a>
 		</div>
 	</div>
 

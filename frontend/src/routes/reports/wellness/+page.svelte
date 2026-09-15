@@ -139,7 +139,7 @@
 			<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
 		</div>
 
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">😊💪 Welzijn & Fitheid</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Welzijn & Fitheid</h2>
 
 		<!-- Team averages -->
 		{#if playerWellness.length > 0}

@@ -92,7 +92,7 @@
 	<div class="space-y-4">
 		<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
 
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">🏐 Wedstrijdaanwezigheid</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Wedstrijdaanwezigheid</h2>
 		<p class="text-sm text-gray-500 dark:text-gray-400">
 			Aanwezigheid per speler over gespeelde wedstrijden binnen het geselecteerde team en seizoen.
 		</p>

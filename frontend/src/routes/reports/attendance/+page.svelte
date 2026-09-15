@@ -91,7 +91,7 @@
 			<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
 		</div>
 
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">📊 Trainingsaanwezigheid</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Trainingsaanwezigheid</h2>
 
 		<!-- Summary -->
 		<div class="card">

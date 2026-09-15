@@ -17,8 +17,8 @@
 		},
 		{
 			href: '/reports/trainer-attendance',
-			title: 'Aanwezigheid per trainer',
-			description: 'Gemiddelde spelersopkomst per trainer over afgeronde trainingen.',
+			title: 'Trainers & opkomst per dag',
+			description: 'Aantal trainingen, percentages en tijd per trainer, plus opkomst per trainingsdag.',
 		},
 		{
 			href: '/reports/wellness',

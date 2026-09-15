@@ -82,7 +82,7 @@
 			<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
 		</div>
 
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">⚖️ Belastingsoverzicht</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Belastingsoverzicht</h2>
 		<p class="text-sm text-gray-500 dark:text-gray-400">
 			Geplande uren van trainingen en wedstrijden van het team, min gemelde afwezigheid, plus
 			extra activiteiten die per speler zijn ingesteld.

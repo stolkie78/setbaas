@@ -98,7 +98,7 @@
 {:else}
 	<div class="space-y-4">
 		<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">🎯 Punten per positie</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Punten per positie</h2>
 		<p class="text-sm text-gray-500 dark:text-gray-400">
 			Telt alleen gespeelde wedstrijden met ingevulde score binnen het geselecteerde team en seizoen.
 			{#if scoredMatchCount > 0}

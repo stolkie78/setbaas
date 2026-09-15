@@ -79,7 +79,7 @@
 {:else}
 	<div class="space-y-4">
 		<a href="{base}/reports" class="text-primary-600 text-sm">← Rapportages</a>
-		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">🏅 Sets gewonnen & verloren</h2>
+		<h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">Sets gewonnen & verloren</h2>
 
 		{#if matches.length === 0}
 			<div class="card text-center py-8 text-gray-500 dark:text-gray-400">
