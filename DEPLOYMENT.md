@@ -1,6 +1,6 @@
-# SetBaas deployment
+# SetBaas Deployment & Beheer
 
-Deze checklist is leidend voor productie-deploys van SetBaas. Volg hem altijd in deze volgorde.
+Deze handleiding en checklist zijn leidend voor het beheer en de productie-deploys van **SetBaas** (voorheen TeamTracker / SideLine). Volg de stappen altijd zorgvuldig in deze volgorde.
 
 ## Spelregels
 
@@ -13,7 +13,7 @@ Deze checklist is leidend voor productie-deploys van SetBaas. Volg hem altijd in
    - Restore alleen als expliciet is bevestigd welke backup teruggezet moet worden.
    - Bewaar de oude data eerst als backup of als `pb_data.old`.
 
-3. **Altijd vanuit de repo-root werken**
+3. **Altijd vanuit de repo-root van SetBaas werken**
 
    ```bash
    cd /home/giedo/setbaas
@@ -44,8 +44,8 @@ Deze checklist is leidend voor productie-deploys van SetBaas. Volg hem altijd in
 8. **Release pas klaar noemen als alles is gecontroleerd**
    - Git tag bestaat.
    - Code staat op `main`.
-   - Productie draait.
-   - Healthcheck is goed.
+   - Productie draait op https://setbaas.nl.
+   - Healthcheck is goed (`http://localhost:8090/api/health` of via reverse proxy).
    - Backup werkt na deploy nog steeds.
 
 9. **Bij twijfel stoppen en vragen**
