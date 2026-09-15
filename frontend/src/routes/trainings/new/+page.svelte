@@ -7,7 +7,7 @@
 	import type { Player, AttendanceStatus, TrainingTemplate } from '$lib/types';
 	import type { TeamAccess } from '$lib/pocketbase';
 	import { TRAINING_TYPE_LABELS } from '$lib/types';
-	import { selectedTeamId, selectedSeasonId, selectedClubId } from '$lib/stores/context';
+	import { selectedTeamId, selectedSeasonId, selectedClubId, currentClub } from '$lib/stores/context';
 	import { authUser } from '$lib/stores/auth';
 	import MarkdownEditor from '$lib/components/MarkdownEditor.svelte';
 	import { generateWithAI as callAI, loadClubAISettings } from '$lib/ai/client';
@@ -242,7 +242,38 @@
 
 			<div>
 				<label class="label" for="location">Sporthal / locatie</label>
-				<input id="location" class="input" type="text" placeholder="Bijv. Sporthal De Veur / Veld 2" bind:value={trainingLocation} />
+				{#if $currentClub?.locations && $currentClub.locations.length > 0}
+					<div class="space-y-1.5">
+						<select
+							class="input"
+							on:change={(e) => {
+								if (e.currentTarget.value === '__custom__') {
+									trainingLocation = '';
+								} else if (e.currentTarget.value) {
+									trainingLocation = e.currentTarget.value;
+								}
+							}}
+							value={$currentClub.locations.includes(trainingLocation) ? trainingLocation : (trainingLocation ? '__custom__' : '')}
+						>
+							<option value="">— Kies standaard zaal —</option>
+							{#each $currentClub.locations as loc}
+								<option value={loc}>{loc}</option>
+							{/each}
+							<option value="__custom__">✏️ Vrije invoer / andere zaal...</option>
+						</select>
+						{#if !trainingLocation || !$currentClub.locations.includes(trainingLocation)}
+							<input
+								id="location"
+								class="input"
+								type="text"
+								placeholder="Locatie naam (bijv. Sporthal De Veur / Veld 2)"
+								bind:value={trainingLocation}
+							/>
+						{/if}
+					</div>
+				{:else}
+					<input id="location" class="input" type="text" placeholder="Bijv. Sporthal De Veur / Veld 2" bind:value={trainingLocation} />
+				{/if}
 			</div>
 
 			<!-- Trainer checkboxes -->

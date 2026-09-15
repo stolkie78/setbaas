@@ -26,11 +26,12 @@
 		pb,
 	} from '$lib/pocketbase';
 	import type { ClubAccess } from '$lib/pocketbase';
-	import { clubs as clubsStore, teams as teamsStore, seasons as seasonsStore, selectedClubId, selectedTeamId, selectedSeasonId } from '$lib/stores/context';
+	import { clubs as clubsStore, teams as teamsStore, seasons as seasonsStore, selectedClubId, selectedTeamId, selectedSeasonId, currentClub } from '$lib/stores/context';
 	import { userClubAccess, isAdmin } from '$lib/stores/role';
 	import { isPlatformAdmin } from '$lib/stores/auth';
 	import type { Club, Competency, CompetencyCategory, Team, Season } from '$lib/types';
 	import { CATEGORY_LABELS } from '$lib/types';
+	import { MapPin, Plus, Trash2 } from 'lucide-svelte';
 
 	import { AI_MODELS, DEFAULT_SYSTEM_PROMPT } from '$lib/stores/ai';
 	import { loadClubAISettings, saveClubAISettings } from '$lib/ai/client';
@@ -333,6 +334,43 @@
 			console.error('Failed to load teams/seasons:', e);
 		} finally {
 			loadingTeams = false;
+		}
+	}
+
+	let newLocationByClub: Record<string, string> = {};
+	let savingLocationByClub: Record<string, boolean> = {};
+
+	async function handleAddLocation(club: Club) {
+		const locName = (newLocationByClub[club.id] || '').trim();
+		if (!locName) return;
+		const existing = Array.isArray(club.locations) ? [...club.locations] : [];
+		if (existing.includes(locName)) {
+			alert('Deze locatie bestaat al voor deze club');
+			return;
+		}
+		const next = [...existing, locName];
+		savingLocationByClub = { ...savingLocationByClub, [club.id]: true };
+		try {
+			await updateClub(club.id, { locations: next });
+			newLocationByClub = { ...newLocationByClub, [club.id]: '' };
+			await loadTeamsSeasons();
+		} catch (e) {
+			console.error('Failed to add location:', e);
+			alert('Fout bij toevoegen locatie');
+		} finally {
+			savingLocationByClub = { ...savingLocationByClub, [club.id]: false };
+		}
+	}
+
+	async function handleRemoveLocation(club: Club, locIndex: number) {
+		const existing = Array.isArray(club.locations) ? [...club.locations] : [];
+		const next = existing.filter((_, i) => i !== locIndex);
+		try {
+			await updateClub(club.id, { locations: next });
+			await loadTeamsSeasons();
+		} catch (e) {
+			console.error('Failed to remove location:', e);
+			alert('Fout bij verwijderen locatie');
 		}
 	}
 
@@ -821,6 +859,46 @@
 						</button>
 					</div>
 
+					<!-- Club standard locations -->
+					<div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg space-y-2 border border-gray-100 dark:border-gray-700">
+						<div class="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+							<MapPin class="w-3.5 h-3.5 text-primary-500" />
+							<span>Standaard trainingszalen / sporthallen ({club.locations?.length || 0})</span>
+						</div>
+						{#if club.locations && club.locations.length > 0}
+							<div class="flex flex-wrap gap-1.5 pt-1">
+								{#each club.locations as loc, idx}
+									<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 shadow-sm">
+										<MapPin class="w-3 h-3 text-primary-500" />
+										<span>{loc}</span>
+										<button
+											type="button"
+											class="text-gray-400 hover:text-red-500 ml-0.5"
+											title="Verwijder zaal"
+											on:click={() => handleRemoveLocation(club, idx)}
+										>
+											×
+										</button>
+									</span>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-xs text-gray-400 italic">Nog geen standaard trainingszalen ingesteld voor deze club.</p>
+						{/if}
+						<form class="flex gap-2 pt-1" on:submit|preventDefault={() => handleAddLocation(club)}>
+							<input
+								class="input flex-1 text-xs"
+								type="text"
+								value={newLocationByClub[club.id] || ''}
+								on:input={(e) => (newLocationByClub = { ...newLocationByClub, [club.id]: e.currentTarget.value })}
+								placeholder="Nieuwe sporthal/zaal (bijv. Sporthal De Veur - Zaal 1)..."
+							/>
+							<button type="submit" class="btn-secondary text-xs px-2.5 py-1" disabled={savingLocationByClub[club.id]}>
+								+ Zaal
+							</button>
+						</form>
+					</div>
+
 					{#each teams.filter((t) => t.club === club.id) as team (team.id)}
 						<div class="p-3 border border-gray-100 dark:border-gray-700 rounded-lg space-y-2 ml-2">
 							<div class="flex items-center gap-2">
@@ -1268,7 +1346,38 @@
 					</div>
 					<div>
 						<label class="label" for="schedule-location">Sporthal / locatie</label>
-						<input id="schedule-location" type="text" class="input" placeholder="Bijv. Sporthal De Veur" bind:value={scheduleLocation} />
+						{#if $currentClub?.locations && $currentClub.locations.length > 0}
+							<div class="space-y-1.5">
+								<select
+									class="input"
+									on:change={(e) => {
+										if (e.currentTarget.value === '__custom__') {
+											scheduleLocation = '';
+										} else if (e.currentTarget.value) {
+											scheduleLocation = e.currentTarget.value;
+										}
+									}}
+									value={$currentClub.locations.includes(scheduleLocation) ? scheduleLocation : (scheduleLocation ? '__custom__' : '')}
+								>
+									<option value="">— Kies standaard zaal —</option>
+									{#each $currentClub.locations as loc}
+										<option value={loc}>{loc}</option>
+									{/each}
+									<option value="__custom__">✏️ Vrije invoer / andere zaal...</option>
+								</select>
+								{#if !scheduleLocation || !$currentClub.locations.includes(scheduleLocation)}
+									<input
+										id="schedule-location"
+										type="text"
+										class="input"
+										placeholder="Bijv. Sporthal De Veur"
+										bind:value={scheduleLocation}
+									/>
+								{/if}
+							</div>
+						{:else}
+							<input id="schedule-location" type="text" class="input" placeholder="Bijv. Sporthal De Veur" bind:value={scheduleLocation} />
+						{/if}
 					</div>
 				</div>
 

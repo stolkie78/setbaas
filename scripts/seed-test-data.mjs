@@ -115,11 +115,20 @@ async function main() {
     name: 'Zovoc',
     short_name: 'ZOVOC',
     city: 'Zoetermeer',
+    locations: [
+      'Sporthal De Veur - Zaal 1',
+      'Sporthal De Veur - Zaal 2',
+      'Sporthal De Oosterpoort',
+    ],
   });
   const clubZVH = await pb.collection('clubs').create({
     name: 'ZVH',
     short_name: 'ZVH',
     city: 'Zevenhuizen',
+    locations: [
+      'Swanla Sporthal - Veld 1',
+      'Swanla Sporthal - Veld 2',
+    ],
   });
   console.log(`  ✓ Club 'Zovoc' created (${clubZovoc.id})`);
   console.log(`  ✓ Club 'ZVH' created (${clubZVH.id})`);

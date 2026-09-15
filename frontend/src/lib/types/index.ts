@@ -50,6 +50,7 @@ export interface Club extends RecordModel {
 	name: string;
 	short_name?: string;
 	city?: string;
+	locations?: string[];
 }
 
 export interface Team extends RecordModel {

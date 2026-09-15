@@ -393,6 +393,7 @@
 						<div class="rounded-xl border border-blue-200/70 dark:border-blue-800/50 bg-white dark:bg-gray-900 py-3 px-4">
 							<AttendanceStatusSwitcher
 								label={new Date(training.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
+								sublabel={training.location ? `· ${training.location}` : undefined}
 								status={current}
 								reason={getTrainingReason(training.id, trainingAttendance)}
 								on:change={(e) => submitStatus('training', training.id, e.detail)}
@@ -771,9 +772,16 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" on:click={() => lightboxTraining = null}>
 		<div class="bg-white dark:bg-gray-900 w-full h-full md:w-[90%] md:h-[90%] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden" on:click|stopPropagation>
 			<div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-				<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">
-					{new Date(lightboxTraining.date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-				</h2>
+				<div>
+					<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">
+						{new Date(lightboxTraining.date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+					</h2>
+					{#if lightboxTraining.location}
+						<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+							📍 {lightboxTraining.location}
+						</p>
+					{/if}
+				</div>
 				<button class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors text-xl" on:click={() => lightboxTraining = null}>
 					✕
 				</button>

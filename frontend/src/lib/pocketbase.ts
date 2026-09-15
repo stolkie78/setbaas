@@ -460,7 +460,7 @@ export async function getClubs(): Promise<Club[]> {
 	return pb.collection('clubs').getFullList<Club>({ sort: 'name' });
 }
 
-export async function createClub(data: { name: string; short_name?: string; city?: string }): Promise<Club> {
+export async function createClub(data: { name: string; short_name?: string; city?: string; locations?: string[] }): Promise<Club> {
 	return pb.collection('clubs').create<Club>(data);
 }
 

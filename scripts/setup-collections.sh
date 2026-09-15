@@ -167,7 +167,8 @@ ensure_collection '{
   "fields": [
     {"name": "name", "type": "text", "required": true},
     {"name": "short_name", "type": "text", "required": false},
-    {"name": "city", "type": "text", "required": false}
+    {"name": "city", "type": "text", "required": false},
+    {"name": "locations", "type": "json", "required": false, "maxSize": 20000}
   ],
   "listRule": "@request.auth.id != \"\"",
   "viewRule": "@request.auth.id != \"\"",
