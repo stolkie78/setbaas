@@ -48,7 +48,12 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
    - Healthcheck is goed (`http://localhost:8090/api/health` of via reverse proxy).
    - Backup werkt na deploy nog steeds.
 
-9. **Bij twijfel stoppen en vragen**
+9. **Nooit tags overschrijven, verplaatsen of hergebruiken (Immutable Tags)**
+   - Overschrijf, delete of force-push **nooit** een bestaande Git tag (`git tag -f`, `git push --delete`, etc.).
+   - Is een tag eenmaal aangemaakt of gepusht? Dan is die versie definitief.
+   - Moet er een fix of wijziging mee? Bump **altijd** naar een nieuw versienummer in `frontend/package.json` (bijv. van `v4.4.0` naar `v4.4.1`) en maak een nieuwe tag aan.
+
+10. **Bij twijfel stoppen en vragen**
    - Vooral bij database, restore, volumes, secrets, DNS/SSL en OAuth.
 
 ## Snelle deploy via script
