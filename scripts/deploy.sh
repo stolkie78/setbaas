@@ -38,11 +38,8 @@ docker compose -f docker-compose.prod.yml up -d
 
 echo ""
 
-# 4. Run setup (idempotent, adds new collections/fields)
-echo "⚙️  Stap 4: Database setup..."
-if docker compose -f docker-compose.prod.yml config --profiles 2>/dev/null | grep -q setup; then
-    docker compose -f docker-compose.prod.yml --profile setup run --rm pb-setup || true
-fi
+# 4. Run setup (optional / skipped by default on routine deploys)
+# Setup is only needed during initial install, never on routine releases.
 
 echo ""
 
