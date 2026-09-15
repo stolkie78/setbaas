@@ -5,11 +5,11 @@
 		currentRole,
 		selectRole,
 		APP_ROLE_LABELS,
-		APP_ROLE_ICONS,
 		APP_ROLE_DESCRIPTIONS,
 		type AppRole,
 	} from '$lib/stores/role';
 	import { authUser } from '$lib/stores/auth';
+	import { ClipboardList, User, Users } from 'lucide-svelte';
 
 	// When dismissible, this is a deliberate role switch rather than the
 	// mandatory question right after login, so it may be closed unanswered.
@@ -69,7 +69,18 @@
 					on:click={() => choose(role)}
 				>
 					<span class="flex items-center gap-3">
-						<span class="text-2xl">{APP_ROLE_ICONS[role]}</span>
+						<span class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+							{$currentRole === role
+								? 'bg-primary-500 text-white dark:bg-primary-500'
+								: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}">
+							{#if role === 'coach'}
+								<ClipboardList class="w-5 h-5" />
+							{:else if role === 'player'}
+								<User class="w-5 h-5" />
+							{:else if role === 'parent'}
+								<Users class="w-5 h-5" />
+							{/if}
+						</span>
 						<span class="flex-1">
 							<span class="block font-semibold text-gray-900 dark:text-gray-100">
 								{APP_ROLE_LABELS[role]}

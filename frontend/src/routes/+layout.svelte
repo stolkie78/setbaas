@@ -34,6 +34,7 @@
 		PERMISSION_LABELS,
 	} from '$lib/stores/role';
 	import RoleSelectDialog from '$lib/components/RoleSelectDialog.svelte';
+	import { ClipboardList, User, Users } from 'lucide-svelte';
 	import type { Club, Team, Season } from '$lib/types';
 	import { version } from '../../package.json';
 
@@ -420,8 +421,17 @@
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Rol</p>
 								<div class="flex items-center justify-between gap-2">
-									<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
-										{APP_ROLE_ICONS[$currentRole]} {APP_ROLE_LABELS[$currentRole]}
+									<span class="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
+										<span class="w-6 h-6 rounded-lg bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+											{#if $currentRole === 'coach'}
+												<ClipboardList class="w-3.5 h-3.5" />
+											{:else if $currentRole === 'player'}
+												<User class="w-3.5 h-3.5" />
+											{:else if $currentRole === 'parent'}
+												<Users class="w-3.5 h-3.5" />
+											{/if}
+										</span>
+										<span>{APP_ROLE_LABELS[$currentRole]}</span>
 									</span>
 									{#if $availableRoles.length > 1}
 										<button
