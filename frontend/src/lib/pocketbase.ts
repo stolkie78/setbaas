@@ -541,11 +541,12 @@ export async function addPlayerToTeam(data: {
 	player: string;
 }): Promise<TeamPlayer> {
 	const result = await pb.collection('team_players').create<TeamPlayer>(data);
+	const today = new Date().toISOString().split('T')[0];
 
-	// Auto-create attendance (status=present) for all non-closed trainings
+	// Auto-create attendance (status=present) for all non-closed/future trainings from today onwards
 	try {
 		const trainings = await pb.collection('trainings').getFullList({
-			filter: `team = "${data.team}" && season = "${data.season}" && status != "closed"`,
+			filter: `team = "${data.team}" && season = "${data.season}" && status != "closed" && date >= "${today}"`,
 			fields: 'id',
 		});
 		await Promise.all(
@@ -563,10 +564,10 @@ export async function addPlayerToTeam(data: {
 		console.error('Failed to create default attendance:', e);
 	}
 
-	// Auto-create attendance (status=present) for all upcoming matches
+	// Auto-create attendance (status=present) for all upcoming/open matches from today onwards
 	try {
 		const matches = await pb.collection('matches').getFullList({
-			filter: `team = "${data.team}" && season = "${data.season}" && date >= "${new Date().toISOString().split('T')[0]}"`,
+			filter: `team = "${data.team}" && season = "${data.season}" && status != "played" && date >= "${today}"`,
 			fields: 'id',
 		});
 		await Promise.all(

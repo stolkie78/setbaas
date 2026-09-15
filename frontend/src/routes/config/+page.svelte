@@ -23,6 +23,8 @@
 		findUserByEmail,
 		createUserAsAdmin,
 		createTraining,
+		createTrainingAttendance,
+		getContextPlayers,
 		pb,
 	} from '$lib/pocketbase';
 	import type { ClubAccess } from '$lib/pocketbase';
@@ -86,6 +88,9 @@
 		scheduleGenerating = true;
 		scheduleResult = '';
 		try {
+			// Get current roster of active players for default attendance
+			const teamPlayers = await getContextPlayers($selectedTeamId, $selectedSeasonId, { activeOnly: true });
+
 			const start = new Date(scheduleStart);
 			const end = new Date(scheduleEnd);
 			let created = 0;
@@ -94,7 +99,7 @@
 				if (!scheduleDays.includes(d.getDay())) continue;
 				const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${scheduleTime}:00`;
 				const trainerId = scheduleTrainerPerDay[d.getDay()] || undefined;
-				await createTraining({
+				const training = await createTraining({
 					date: dateStr,
 					team: $selectedTeamId,
 					season: $selectedSeasonId,
@@ -103,9 +108,23 @@
 					location: scheduleLocation.trim() || undefined,
 					...(trainerId ? { trainer: [trainerId] } : {}),
 				});
+
+				// Auto-create attendance (present) for all players on the roster
+				if (teamPlayers.length > 0) {
+					await Promise.all(
+						teamPlayers.map(p =>
+							createTrainingAttendance({
+								training: training.id,
+								player: p.id,
+								status: 'present',
+							}).catch(() => null)
+						)
+					);
+				}
+
 				created++;
 			}
-			scheduleResult = `✅ ${created} trainingen aangemaakt!`;
+			scheduleResult = `✅ ${created} trainingen aangemaakt met standaard aanwezigheid voor ${teamPlayers.length} speler(s)!`;
 		} catch (e) {
 			scheduleResult = `❌ Fout: ${e}`;
 		} finally {
