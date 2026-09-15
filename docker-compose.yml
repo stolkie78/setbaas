@@ -6,7 +6,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ./pb_data:/pb/pb_data
+      - ./pb_data:/pb_data
       - ./pb_migrations:/pb/pb_migrations
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
@@ -51,6 +51,7 @@ services:
     environment:
       - PUBLIC_POCKETBASE_URL=http://pocketbase:8090
       - ORIGIN=http://localhost:3000
+      - BODY_SIZE_LIMIT=104857600
       - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
       - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
       - SMTP_HOST=${SMTP_HOST:-}

@@ -44,14 +44,22 @@ export async function downloadBackup(key: string): Promise<void> {
 	if (!res.ok) throw new Error(await readError(res));
 
 	const blob = await res.blob();
+	if (blob.size === 0) {
+		throw new Error('De gedownloade backup is leeg.');
+	}
+
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
 	a.download = key;
+	a.style.display = 'none';
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
-	URL.revokeObjectURL(url);
+
+	// Safari may not start reading the object URL until after the click handler
+	// returns. Revoking it immediately silently cancels the download.
+	window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** Uploads and restores a backup zip. This overwrites all current data. */

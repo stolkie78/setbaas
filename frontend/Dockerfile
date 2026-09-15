@@ -17,5 +17,6 @@ COPY --from=builder /app/package.json .
 COPY --from=builder /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
+ENV BODY_SIZE_LIMIT=104857600
 EXPOSE 3000
 CMD ["node", "build"]

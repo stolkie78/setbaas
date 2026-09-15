@@ -59,11 +59,11 @@ export async function fetchBackupFile(key: string): Promise<Response> {
 }
 
 /** Uploads a backup zip and immediately restores from it (restarts PocketBase). */
-export async function uploadAndRestoreBackup(file: File): Promise<void> {
+export async function uploadAndRestoreBackup(file: Blob, fileName: string): Promise<void> {
 	const token = await getAdminToken();
 
 	const form = new FormData();
-	form.append('file', file, file.name);
+	form.append('file', file, fileName);
 	const uploadRes = await fetch(`${pbUrl()}/api/backups/upload`, {
 		method: 'POST',
 		headers: { Authorization: token },
@@ -71,7 +71,7 @@ export async function uploadAndRestoreBackup(file: File): Promise<void> {
 	});
 	if (!uploadRes.ok) throw new Error(await uploadRes.text());
 
-	const restoreRes = await fetch(`${pbUrl()}/api/backups/${encodeURIComponent(file.name)}/restore`, {
+	const restoreRes = await fetch(`${pbUrl()}/api/backups/${encodeURIComponent(fileName)}/restore`, {
 		method: 'POST',
 		headers: { Authorization: token }
 	});

@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.3.0
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.3.1
 
 ## Tech Stack
 
@@ -222,8 +222,7 @@ tar -xzf backups/setbaas_backup_YYYYMMDD_HHMMSS.tar.gz -C /tmp/restore
 
 # 3. Kopieer database terug
 docker compose -f docker-compose.prod.yml up -d pocketbase
-docker compose -f docker-compose.prod.yml cp /tmp/restore/data.db pocketbase:/pb/pb_data/data.db
-docker compose -f docker-compose.prod.yml cp /tmp/restore/storage pocketbase:/pb/pb_data/storage
+docker compose -f docker-compose.prod.yml cp /tmp/restore/pb_data/. pocketbase:/pb_data/
 
 # 4. Herstart
 docker compose -f docker-compose.prod.yml down
@@ -357,6 +356,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.3.1** | 2026-09-15 | Backup/restore patch: PocketBase-volumes zijn gecorrigeerd naar **/pb_data**, het filesystem-backupscript detecteert het echte datapad, stopt PocketBase kort voor een consistente kopie en weigert lege backups. De app-backupdownload is betrouwbaarder gemaakt voor browsers en restore-uploads ondersteunen nu grotere backupbestanden via een expliciete 100 MB bodylimiet. |
 | **v4.3.0** | 2026-09-15 | Dashboardvernieuwing met **Lucide-iconen**, een paginabrede teamkaart voor club/team/seizoen/spelersaantal en uitgesplitste statistieken voor geplande en afgeronde trainingen en wedstrijden. Trainings- en wedstrijdacties zijn compacter gemaakt met icon-only knoppen. Wedstrijden hebben nu een volledig bewerkformulier én een aparte **Scores**-workflow voor setstanden, punten per speler en opmerkingen. |
 | **v4.2.1** | 2026-09-13 | De trainingsduur (in minuten) kan nu worden ingevuld bij het aanmaken en bewerken van een training. |
 | **v4.2.0** | 2026-09-11 | Nieuwe **Backup & herstel**-functie voor platformbeheerders: op de platform-adminpagina kun je nu handmatig een volledige backup maken (SQLite + alle geüploade bestanden als zip), bestaande backups downloaden of verwijderen, en een externe zip terugzetten om te herstellen na een crash. Handig om periodiek een externe backup te maken naar bijvoorbeeld je eigen NAS. |

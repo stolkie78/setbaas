@@ -13,9 +13,23 @@ export const POST: RequestHandler = async ({ request }) => {
 		return jsonError('Alleen een platformbeheerder mag een backup terugzetten', 403);
 	}
 
-	const form = await request.formData().catch(() => null);
+	let uploadError = false;
+	const form = await request.formData().catch((error) => {
+		uploadError = true;
+		console.error('Kon backup-upload niet verwerken:', error);
+		return null;
+	});
+	if (uploadError) {
+		return jsonError('Het backupbestand is te groot of kon niet worden gelezen', 413);
+	}
 	const file = form?.get('file');
-	if (!(file instanceof File) || !file.size) {
+	if (
+		!file ||
+		typeof file === 'string' ||
+		typeof file.name !== 'string' ||
+		typeof file.size !== 'number' ||
+		file.size === 0
+	) {
 		return jsonError('Geen backupbestand ontvangen', 400);
 	}
 	if (!file.name.endsWith('.zip')) {
@@ -23,7 +37,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		await uploadAndRestoreBackup(file);
+		await uploadAndRestoreBackup(file, file.name);
 		return new Response(JSON.stringify({ ok: true }), {
 			headers: { 'Content-Type': 'application/json' }
 		});

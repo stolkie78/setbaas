@@ -57,6 +57,7 @@
 	let backups: BackupInfo[] = [];
 	let backupsLoading = true;
 	let backupsError = '';
+	let backupsNotice = '';
 	let creatingBackup = false;
 	let deletingBackupKey = '';
 	let downloadingBackupKey = '';
@@ -168,6 +169,7 @@
 	async function loadBackups() {
 		backupsLoading = true;
 		backupsError = '';
+		backupsNotice = '';
 		try {
 			backups = await listBackups();
 		} catch (e: any) {
@@ -180,9 +182,11 @@
 	async function handleCreateBackup() {
 		creatingBackup = true;
 		backupsError = '';
+		backupsNotice = '';
 		try {
 			await createBackup();
 			await loadBackups();
+			backupsNotice = 'Backup gemaakt. Klik op Downloaden om het zip-bestand extern op te slaan.';
 		} catch (e: any) {
 			backupsError = e?.message || 'Kon geen backup maken';
 		} finally {
@@ -193,8 +197,10 @@
 	async function handleDownloadBackup(backup: BackupInfo) {
 		downloadingBackupKey = backup.key;
 		backupsError = '';
+		backupsNotice = '';
 		try {
 			await downloadBackup(backup.key);
+			backupsNotice = `Download van ${backup.key} is gestart.`;
 		} catch (e: any) {
 			backupsError = e?.message || 'Kon de backup niet downloaden';
 		} finally {
@@ -206,6 +212,7 @@
 		if (!confirm(`Backup "${backup.key}" verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
 		deletingBackupKey = backup.key;
 		backupsError = '';
+		backupsNotice = '';
 		try {
 			await deleteBackup(backup.key);
 			await loadBackups();
@@ -355,6 +362,9 @@
 
 		{#if backupsError}
 			<p class="text-sm text-red-500">{backupsError}</p>
+		{/if}
+		{#if backupsNotice}
+			<p class="text-sm text-green-600 dark:text-green-400">{backupsNotice}</p>
 		{/if}
 
 		<button class="btn-primary" disabled={creatingBackup} on:click={handleCreateBackup}>
