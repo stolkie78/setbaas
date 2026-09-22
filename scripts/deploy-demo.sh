@@ -29,30 +29,6 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# 1. Backup before deploy (optioneel voor demo)
-echo "📦 Stap 1: Demo backup maken..."
-if dc ps --services --filter status=running 2>/dev/null | grep -q pocketbase; then
-    if [ -f "./scripts/backup_demo.sh" ]; then
-        ./scripts/backup_demo.sh
-    else
-        # Fallback: kopieer demo sqlite db als backup_demo.sh niet bestaat
-        mkdir -p ./backups_demo
-        cp -r ./pb_data_demo ./backups_demo/pb_data_$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
-        echo "  📁 Snelle snapshot gemaakt in ./backups_demo"
-    fi
-else
-    echo "  ⚠ Demo PocketBase draait niet, backup overgeslagen"
-fi
-
-echo ""
-
-# 2. Pull latest code
-echo "📥 Stap 2: Code ophalen..."
-git fetch --tags
-git pull --ff-only
-
-echo ""
-
 # 3. Build and deploy
 echo "🔨 Stap 3: Build en deploy demo containers..."
 dc build frontend
