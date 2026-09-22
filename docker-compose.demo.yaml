@@ -1,0 +1,90 @@
+# SetBaas Demo Environment
+# Configure via .env.demo file:
+#   SITE_URL=https://demo.setbaas.nl
+#   PB_ADMIN_EMAIL=...
+#   PB_ADMIN_PASSWORD=...
+#
+# Usage:
+#   docker compose -p setbaas-demo -f docker-compose.demo.yml --env-file .env.demo up -d --build
+#   docker compose -p setbaas-demo -f docker-compose.demo.yml --env-file .env.demo --profile setup run --rm pb-setup
+
+name: setbaas-demo
+
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: setbaas-demo-pb
+    restart: unless-stopped
+    expose:
+      - "8090"
+    volumes:
+      - ./pb_data_demo:/pb_data
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+      - caddy-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: setbaas-demo-frontend:latest
+    container_name: setbaas-demo-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - PUBLIC_POCKETBASE_URL=${SITE_URL:-https://demo.setbaas.nl}
+      - ORIGIN=${SITE_URL:-https://demo.setbaas.nl}
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@demo.setbaas.nl}
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    networks:
+      - default
+      - caddy-net
+
+  pb-setup:
+    image: alpine:3.19
+    container_name: setbaas-demo-pb-setup
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl jq docker-cli > /dev/null 2>&1
+        docker exec setbaas-demo-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
+        sh /scripts/setup-collections.sh http://pocketbase:8090
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SITE_URL=${SITE_URL:-}
+      - OWNER_EMAIL=${OWNER_EMAIL:-}
+      - SETBAAS_ADMIN_EMAIL=${SETBAAS_ADMIN_EMAIL:-}
+      - SETBAAS_ADMIN_PASSWORD=${SETBAAS_ADMIN_PASSWORD:-}
+    restart: "no"
+    profiles: ["setup"]
+    networks:
+      - default
+
+networks:
+  default:
+    name: setbaas-demo-net
+  caddy-net:
+    external: true
