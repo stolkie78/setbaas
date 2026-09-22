@@ -22,15 +22,14 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# Zorg dat variabelen uit .env.demo expliciet in de shell geladen worden
-# Dit voorkomt dat Compose terugvalt op de productie .env
+# Forceer inladen variabelen in de huidige subshell
 set -a
 source "$ENV_FILE"
 set +a
 
-# Wrapper shorthand voor docker compose
+# Wrapper shorthand voor docker compose (plaats --env-file vooraan zodat Docker Compose .env negeert)
 dc() {
-    docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+    docker compose --env-file "$ENV_FILE" -p "$PROJECT_NAME" -f "$COMPOSE_FILE" "$@"
 }
 
 # 1. Build and deploy
@@ -43,7 +42,7 @@ echo ""
 # 2. Run setup (idempotent, schema migraties & superuser)
 echo "⚙️  Stap 2: Database setup (schema migraties)..."
 if dc config --profiles 2>/dev/null | grep -q setup; then
-    dc --profile setup run --rm pb-setup || true
+    dc --profile setup run --rm --env-file "$ENV_FILE" pb-setup || true
 fi
 
 echo ""
