@@ -55,30 +55,23 @@ services:
       - default
       - caddy-net
 
-  pb-setup:
+pb-setup:
     image: alpine:3.19
-    container_name: setbaas-pb-setup
+    container_name: setbaas-demo-pb-setup
     depends_on:
       pocketbase:
         condition: service_healthy
     volumes:
       - ./scripts:/scripts
       - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env.demo
     entrypoint: ["sh", "-c"]
     command:
       - |
         apk add --no-cache curl jq docker-cli > /dev/null 2>&1
-        docker exec setbaas-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
+        docker exec setbaas-demo-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
         sh /scripts/setup-collections.sh http://pocketbase:8090
-    environment:
-      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
-      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - SITE_URL=${SITE_URL:-}
-      - OWNER_EMAIL=${OWNER_EMAIL:-}
-      - SETBAAS_ADMIN_EMAIL=${SETBAAS_ADMIN_EMAIL:-}
-      - SETBAAS_ADMIN_PASSWORD=${SETBAAS_ADMIN_PASSWORD:-}
     restart: "no"
     profiles: ["setup"]
     networks:
