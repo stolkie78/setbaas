@@ -56,6 +56,12 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
 10. **Bij twijfel stoppen en vragen**
    - Vooral bij database, restore, volumes, secrets, DNS/SSL en OAuth.
 
+11. ** Caddy draait als aparte service op de productie machine **
+   - Pas de Caddyfiles aan in de repo waar nodig en vermeldt de acties die nodig zijn om op product te kunnen releasen indien nodig
+   - De caddy instantie kijkt in $HOME/caddy/conf.d/*.caddy files
+   - Naming is [domainname].caddy dus setbaas.nl.caddy in dit geval
+   - Het caddy docker network heet: caddy-net
+
 ## Snelle deploy via script
 
 Je kunt op de server ook direct het geautomatiseerde deploy-script draaien:
