@@ -1,16 +1,3 @@
-# SetBaas Production/Server Environment
-# Configure via .env file:
-#   DOMAIN=setbaas.nl        (your domain or hostname)
-#   ENABLE_SSL=true          (true = HTTPS via Let's Encrypt, false = HTTP only)
-#   HTTP_PORT=80             (optional, default 80)
-#.  Caddy already running as global service on production
-#
-# Usage:
-#   docker compose -f docker-compose.prod.yml up -d --build
-#   docker compose -f docker-compose.prod.yml --profile setup run --rm pb-setup
-
-
-
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
@@ -55,9 +42,9 @@ services:
       - default
       - caddy-net
 
-pb-setup:
+  pb-setup:
     image: alpine:3.19
-    container_name: setbaas-demo-pb-setup
+    container_name: setbaas-pb-setup
     depends_on:
       pocketbase:
         condition: service_healthy
@@ -65,12 +52,12 @@ pb-setup:
       - ./scripts:/scripts
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
-      - .env.demo
+      - .env
     entrypoint: ["sh", "-c"]
     command:
       - |
         apk add --no-cache curl jq docker-cli > /dev/null 2>&1
-        docker exec setbaas-demo-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
+        docker exec setbaas-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
         sh /scripts/setup-collections.sh http://pocketbase:8090
     restart: "no"
     profiles: ["setup"]
