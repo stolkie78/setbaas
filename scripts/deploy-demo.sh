@@ -1,7 +1,5 @@
 #!/bin/bash
 # SetBaas Demo Deploy Script
-# Creates a backup before deploying a new demo version
-#
 # Usage:
 #   ./scripts/deploy_demo.sh
 
@@ -15,11 +13,6 @@ COMPOSE_FILE="docker-compose.demo.yml"
 ENV_FILE=".env.demo"
 PROJECT_NAME="setbaas-demo"
 
-# Wrapper shorthand voor docker compose
-dc() {
-    docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
-}
-
 echo "🏐 SetBaas Demo Deploy (demo.setbaas.nl)"
 echo ""
 
@@ -29,23 +22,34 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-# 3. Build and deploy
-echo "🔨 Stap 3: Build en deploy demo containers..."
+# Zorg dat variabelen uit .env.demo expliciet in de shell geladen worden
+# Dit voorkomt dat Compose terugvalt op de productie .env
+set -a
+source "$ENV_FILE"
+set +a
+
+# Wrapper shorthand voor docker compose
+dc() {
+    docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+}
+
+# 1. Build and deploy
+echo "🔨 Stap 1: Build en deploy demo containers..."
 dc build frontend
 dc up -d
 
 echo ""
 
-# 4. Run setup (idempotent, voegt demo collections/fields toe)
-echo "⚙️  Stap 4: Database setup (schema migraties)..."
+# 2. Run setup (idempotent, schema migraties & superuser)
+echo "⚙️  Stap 2: Database setup (schema migraties)..."
 if dc config --profiles 2>/dev/null | grep -q setup; then
     dc --profile setup run --rm pb-setup || true
 fi
 
 echo ""
 
-# 5. Verify services
-echo "🔎 Stap 5: Demo services controleren..."
+# 3. Verify services
+echo "🔎 Stap 3: Demo services controleren..."
 for i in $(seq 1 15); do
     if dc exec -T frontend \
         wget -q --spider http://127.0.0.1:3000 2>/dev/null \
@@ -64,6 +68,6 @@ done
 
 echo ""
 
-# 6. Show version
+# 4. Show version
 VERSION=$(grep '"version"' frontend/package.json | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
 echo "✅ Demo deploy compleet! SetBaas v${VERSION} is live op demo.setbaas.nl"
