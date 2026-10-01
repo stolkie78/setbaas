@@ -6,6 +6,14 @@ async function nevoboFetch(path: string): Promise<Response> {
 	return fetch(`${base}/api/nevobo?path=${encodeURIComponent(path)}`);
 }
 
+export interface NevoboSetstand {
+	set: number;
+	/** Points for teams[0] (the home team on the scoresheet) */
+	puntenA: number | null;
+	/** Points for teams[1] (the away team on the scoresheet) */
+	puntenB: number | null;
+}
+
 export interface NevoboMatch {
 	uuid: string;
 	code: string;
@@ -16,8 +24,58 @@ export interface NevoboMatch {
 	teams: string[];
 	status: { waarde: string; omschrijving: string };
 	urlDwf?: string;
-	setstanden?: { set: number; team1: number; team2: number }[];
-	uitslag?: { setsTeam1: number; setsTeam2: number };
+	setstanden?: NevoboSetstand[];
+	/** Final set score as [teams[0], teams[1]], e.g. [1, 3] */
+	eindstand?: number[];
+	/** Human readable result, e.g. "1-3  (14-25, 25-23, 17-25, 14-25)" */
+	volledigeUitslag?: string;
+}
+
+/** Normalised Nevobo result, always home-first (scoresheet order). */
+export interface NevoboResult {
+	homeSets: number;
+	awaySets: number;
+	sets: { set: number; home: number | null; away: number | null }[];
+}
+
+function toNumber(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Extract the result of a Nevobo match, if it has been played.
+ * Nevobo reports points as puntenA/puntenB and the final score as
+ * eindstand [A, B], where A = teams[0] (home) and B = teams[1] (away).
+ */
+export function getNevoboResult(match: NevoboMatch): NevoboResult | null {
+	const sets = (match.setstanden ?? [])
+		.map((s, i) => ({
+			set: toNumber(s?.set) ?? i + 1,
+			home: toNumber(s?.puntenA),
+			away: toNumber(s?.puntenB),
+		}))
+		.filter((s) => s.home !== null || s.away !== null)
+		.sort((a, b) => a.set - b.set);
+
+	const eindstandHome = toNumber(match.eindstand?.[0]);
+	const eindstandAway = toNumber(match.eindstand?.[1]);
+
+	if (eindstandHome !== null && eindstandAway !== null) {
+		return { homeSets: eindstandHome, awaySets: eindstandAway, sets };
+	}
+
+	// Fall back on counting the sets when Nevobo omits the final score.
+	const decided = sets.filter((s) => s.home !== null && s.away !== null && s.home !== s.away);
+	if (decided.length === 0) return null;
+
+	const homeSets = decided.filter((s) => (s.home as number) > (s.away as number)).length;
+	return { homeSets, awaySets: decided.length - homeSets, sets };
+}
+
+/** "1 - 3" in scoresheet order, or '' when the match has no result yet. */
+export function formatNevoboResult(match: NevoboMatch): string {
+	const result = getNevoboResult(match);
+	return result ? `${result.homeSets} - ${result.awaySets}` : '';
 }
 
 export interface NevoboTeam {

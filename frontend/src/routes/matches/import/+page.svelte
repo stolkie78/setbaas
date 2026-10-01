@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { pb } from '$lib/pocketbase';
-	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, NEVOBO_TEAM_TYPES } from '$lib/nevobo';
+	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, getNevoboResult, NEVOBO_TEAM_TYPES } from '$lib/nevobo';
 	import type { NevoboMatch } from '$lib/nevobo';
 	import type { Team } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
@@ -135,17 +135,19 @@
 				};
 
 				// Import scores if match has been played
-				// Scores are stored home-first (scoresheet order), matching Nevobo's team1/team2.
-				if (m.uitslag) {
-					nevoboData.score_team = m.uitslag.setsTeam1;
-					nevoboData.score_opponent = m.uitslag.setsTeam2;
-				}
-				if (m.setstanden && m.setstanden.length > 0) {
-					nevoboData.set_scores = m.setstanden.map(s => ({
-						set: s.set,
-						team: s.team1,
-						opponent: s.team2,
-					}));
+				// Scores are stored home-first (scoresheet order), matching Nevobo's A/B teams.
+				const result = getNevoboResult(m);
+				if (result) {
+					nevoboData.score_team = result.homeSets;
+					nevoboData.score_opponent = result.awaySets;
+					if (result.sets.length > 0) {
+						nevoboData.set_scores = result.sets.map((s) => ({
+							set: s.set,
+							team: s.home,
+							opponent: s.away,
+						}));
+					}
+					nevoboData.status = 'played';
 				}
 
 				const existingId = existingByUuid.get(m.uuid);
@@ -155,9 +157,9 @@
 					updateCount++;
 				} else {
 					await pb.collection('matches').create({
-						...nevoboData,
 						// Imported results are already final; the rest still has to be played
-						status: m.uitslag ? 'played' : 'open',
+						status: 'open',
+						...nevoboData,
 						team: $selectedTeamId || undefined,
 						season: $selectedSeasonId || undefined,
 						created_by: $authUser?.id || undefined,
@@ -251,6 +253,7 @@
 
 			<div class="space-y-2 max-h-[60vh] overflow-y-auto">
 				{#each matches as match, i}
+					{@const result = getNevoboResult(match)}
 					<label class="flex items-start gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
 						<input type="checkbox" bind:checked={matches[i].selected} class="mt-1" />
 						<div class="flex-1 min-w-0">
@@ -268,12 +271,30 @@
 							{#if match.resolved?.sporthal}
 								<div class="text-xs text-gray-400 mt-0.5">📍 {match.resolved.sporthal}</div>
 							{/if}
+							{#if result && result.sets.length > 0}
+								<div class="flex flex-wrap gap-1 mt-1.5">
+									{#each result.sets as set}
+										<span class="text-xs px-1.5 py-0.5 rounded font-mono bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+											{set.home ?? '?'}-{set.away ?? '?'}
+										</span>
+									{/each}
+								</div>
+							{/if}
 						</div>
-						<span class="text-xs px-2 py-0.5 rounded-full {
-							match.status?.waarde === 'definitief' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-						}">
-							{match.status?.omschrijving || 'Concept'}
-						</span>
+						<div class="flex flex-col items-end gap-1">
+							<span class="text-xs px-2 py-0.5 rounded-full {
+								match.status?.waarde === 'gespeeld' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+								: match.status?.waarde === 'definitief' ? 'bg-green-100 text-green-700'
+								: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+							}">
+								{match.status?.omschrijving || 'Concept'}
+							</span>
+							{#if result}
+								<span class="text-base font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+									{result.homeSets} - {result.awaySets}
+								</span>
+							{/if}
+						</div>
 					</label>
 				{/each}
 			</div>

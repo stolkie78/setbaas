@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.3.1
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.5.1
 
 ## Tech Stack
 
@@ -381,6 +381,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.5.1** | 2026-10-01 | Nevobo-uitslagen worden weer correct opgehaald. De import las de velden `uitslag`/`team1` uit, terwijl de Nevobo API de uitslag levert als `setstanden[].puntenA/puntenB` en `eindstand`, waardoor er nooit een score werd opgeslagen. Bij importeren én verversen worden nu de **eindstand, setstanden en de status Gespeeld** weggeschreven, en het importoverzicht toont de uitslag en setstanden per wedstrijd. |
 | **v4.5.0** | 2026-10-01 | Het coachdashboard toont trainingen en wedstrijden nu in één chronologische **Tijdlijn** in plaats van twee losse kaarten, met een filter **Alles / Trainingen / Wedstrijden**. Elke kaart heeft een duidelijk label *Training* of *Wedstrijd*, en de links **Alle trainingen** en **Alle wedstrijden** staan boven de kaarten. Nieuw is één deploy-script voor alle omgevingen: `./scripts/deploy.sh <test\|demo\|prod>` bouwt, start en controleert de omgeving en voert de schema-setup alleen uit bij een clean install, een release-update of een gewijzigd setup-script. Er is een geïsoleerde testomgeving bijgekomen (`docker-compose.test.yml`) met `seed`- en `clean`-commando's. |
 | **v4.3.1** | 2026-09-15 | Backup/restore patch: PocketBase-volumes zijn gecorrigeerd naar **/pb_data**, het filesystem-backupscript detecteert het echte datapad, stopt PocketBase kort voor een consistente kopie en weigert lege backups. De app-backupdownload is betrouwbaarder gemaakt voor browsers en restore-uploads ondersteunen nu grotere backupbestanden via een expliciete 100 MB bodylimiet. |
 | **v4.3.0** | 2026-09-15 | Dashboardvernieuwing met **Lucide-iconen**, een paginabrede teamkaart voor club/team/seizoen/spelersaantal en uitgesplitste statistieken voor geplande en afgeronde trainingen en wedstrijden. Trainings- en wedstrijdacties zijn compacter gemaakt met icon-only knoppen. Wedstrijden hebben nu een volledig bewerkformulier én een aparte **Scores**-workflow voor setstanden, punten per speler en opmerkingen. |
