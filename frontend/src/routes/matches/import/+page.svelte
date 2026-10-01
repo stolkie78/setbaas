@@ -3,13 +3,14 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { pb } from '$lib/pocketbase';
-	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, getNevoboResult, NEVOBO_TEAM_TYPES } from '$lib/nevobo';
-	import type { NevoboMatch } from '$lib/nevobo';
+	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, getNevoboResult, parseNevoboTeamUrl } from '$lib/nevobo';
+	import type { NevoboMatch, NevoboTeamRef } from '$lib/nevobo';
 	import type { Team } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
 	import { authUser } from '$lib/stores/auth';
 
 	let team: Team | null = null;
+	let teamLoading = true;
 	let loading = false;
 	let importing = false;
 	let matches: (NevoboMatch & { resolved?: { home: string; away: string; sporthal: string }; selected: boolean })[] = [];
@@ -17,29 +18,20 @@
 	let importCount = 0;
 	let updateCount = 0;
 
-	// Manual config if team doesn't have nevobo settings
-	let manualCode = '';
-	let manualType = 'meiden-b';
-	let manualNumber = 1;
+	/** The Nevobo team is derived from the URL configured on the team. */
+	let teamRef: NevoboTeamRef | null = null;
 
-
+	$: nevoboUrl = team?.nevobo_url?.trim() || '';
 
 	onMount(async () => {
-		if ($selectedTeamId) {
+		try {
+			if (!$selectedTeamId) return;
 			team = await pb.collection('teams').getOne<Team>($selectedTeamId, { expand: 'club' });
-			// Parse nevobo_url if available: https://www.volleybal.nl/competitie/vereniging/{code}/{type}/{number}
-			if (team.nevobo_url) {
-				const match = team.nevobo_url.match(/\/vereniging\/([^/]+)\/([^/]+)\/(\d+)/);
-				if (match) {
-					manualCode = match[1];
-					manualType = match[2];
-					manualNumber = parseInt(match[3]);
-				}
-			} else if (team.nevobo_code) {
-				manualCode = team.nevobo_code;
-				manualType = team.nevobo_team_type || 'hs';
-				manualNumber = team.nevobo_team_number || 1;
-			}
+			teamRef = parseNevoboTeamUrl(team.nevobo_url);
+		} catch (e) {
+			error = `Fout bij laden team: ${e}`;
+		} finally {
+			teamLoading = false;
 		}
 	});
 
@@ -55,24 +47,22 @@
 			if (token && n.includes(token)) return true;
 		}
 
-		const code = manualCode.trim().toLowerCase();
+		const code = teamRef?.code ?? '';
 		return code.length > 0 && n.includes(code);
 	}
 
 	async function fetchMatches() {
-		if (!manualCode.trim()) {
-			error = 'Vul een Nevobo verenigingscode in';
-			return;
-		}
+		if (!teamRef) return;
+
 		loading = true;
 		error = '';
 		matches = [];
 
 		try {
-			const nevoboMatches = await getTeamMatches(manualCode, manualType, manualNumber);
+			const nevoboMatches = await getTeamMatches(teamRef.code, teamRef.teamType, teamRef.teamNumber);
 
 			if (nevoboMatches.length === 0) {
-				error = 'Geen wedstrijden gevonden voor dit team. Controleer de code en het type.';
+				error = 'Geen wedstrijden gevonden voor dit team. Controleer de Nevobo URL bij Instellingen.';
 				return;
 			}
 
@@ -168,15 +158,6 @@
 				}
 			}
 
-			// Save nevobo config to team if changed
-			if (team && $selectedTeamId) {
-				await pb.collection('teams').update($selectedTeamId, {
-					nevobo_code: manualCode.toUpperCase(),
-					nevobo_team_type: manualType,
-					nevobo_team_number: manualNumber,
-				});
-			}
-
 			goto(`${base}/matches`);
 		} catch (e) {
 			error = `Fout bij importeren: ${e}`;
@@ -200,36 +181,49 @@
 		<a href="{base}/matches" class="btn-secondary text-sm">← Terug</a>
 	</div>
 
-	<!-- Nevobo Config -->
+	<!-- Nevobo config comes from the team settings; this page only reads it -->
 	<div class="card space-y-4">
-		<h3 class="font-semibold text-gray-800 dark:text-gray-200">Nevobo Configuratie</h3>
-		<p class="text-sm text-gray-500 dark:text-gray-400">
-			Vul de Nevobo verenigingscode in (bijv. CKM1H25) en selecteer het teamtype.
-			Je vindt de code op <a href="https://www.nevobo.nl" target="_blank" class="text-primary-600 underline">nevobo.nl</a> bij je vereniging.
-		</p>
+		<h3 class="font-semibold text-gray-800 dark:text-gray-200">Nevobo koppeling</h3>
 
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+		{#if teamLoading}
+			<p class="text-sm text-gray-500 dark:text-gray-400">Teamgegevens laden...</p>
+		{:else if !$selectedTeamId}
+			<p class="text-sm text-gray-500 dark:text-gray-400">
+				Selecteer eerst een team om het wedstrijdschema op te halen.
+			</p>
+		{:else if !nevoboUrl}
+			<p class="text-sm text-gray-500 dark:text-gray-400">
+				Er is nog geen Nevobo URL ingesteld voor <span class="font-medium">{team?.name}</span>.
+				Stel deze in bij <a href="{base}/config" class="text-primary-600 underline">Instellingen</a>.
+			</p>
+		{:else}
 			<div>
-				<label class="label">Verenigingscode *</label>
-				<input type="text" class="input" bind:value={manualCode} placeholder="bijv. CKM1H25" />
+				<span class="label">Nevobo URL van {team?.name}</span>
+				<a
+					href={nevoboUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="block text-sm text-primary-600 underline break-all"
+				>
+					{nevoboUrl} ↗
+				</a>
 			</div>
-			<div>
-				<label class="label">Team type</label>
-				<select class="input" bind:value={manualType}>
-					{#each NEVOBO_TEAM_TYPES as t}
-						<option value={t.value}>{t.label}</option>
-					{/each}
-				</select>
-			</div>
-			<div>
-				<label class="label">Nummer</label>
-				<input type="number" class="input" bind:value={manualNumber} min="1" max="20" />
-			</div>
-		</div>
 
-		<button class="btn-primary" on:click={fetchMatches} disabled={loading}>
-			{loading ? 'Ophalen...' : '🔄 Wedstrijdschema ophalen'}
-		</button>
+			{#if !teamRef}
+				<p class="text-sm text-amber-700 dark:text-amber-400">
+					Deze URL heeft niet de verwachte vorm
+					<code class="text-xs">.../competitie/vereniging/&lbrace;code&rbrace;/&lbrace;type&rbrace;/&lbrace;nummer&rbrace;</code>.
+					Pas hem aan bij <a href="{base}/config" class="underline">Instellingen</a>.
+				</p>
+			{/if}
+
+			<div class="flex flex-wrap gap-2">
+				<button class="btn-primary" on:click={fetchMatches} disabled={loading || !teamRef}>
+					{loading ? 'Ophalen...' : '🔄 Wedstrijdschema ophalen'}
+				</button>
+				<a href="{base}/config" class="btn-secondary">URL wijzigen</a>
+			</div>
+		{/if}
 	</div>
 
 	{#if error}

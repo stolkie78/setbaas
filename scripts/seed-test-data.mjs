@@ -139,14 +139,12 @@ async function main() {
     await pb.collection('teams').create({
       name: 'Zovoc Dames 1',
       club: clubZovoc.id,
-      nevobo_team_type: 'ds',
-      nevobo_team_number: 1,
+      nevobo_url: 'https://www.volleybal.nl/competitie/vereniging/CKL9N3N/dames/1',
     }),
     await pb.collection('teams').create({
       name: 'Zovoc Heren 1',
       club: clubZovoc.id,
-      nevobo_team_type: 'hs',
-      nevobo_team_number: 1,
+      nevobo_url: 'https://www.volleybal.nl/competitie/vereniging/CKL9N3N/heren/1',
     }),
   ];
 
@@ -154,14 +152,12 @@ async function main() {
     await pb.collection('teams').create({
       name: 'ZVH Dames 1',
       club: clubZVH.id,
-      nevobo_team_type: 'ds',
-      nevobo_team_number: 1,
+      nevobo_url: 'https://www.volleybal.nl/competitie/vereniging/CKL9W2F/dames/1',
     }),
     await pb.collection('teams').create({
       name: 'ZVH Heren 1',
       club: clubZVH.id,
-      nevobo_team_type: 'hs',
-      nevobo_team_number: 1,
+      nevobo_url: 'https://www.volleybal.nl/competitie/vereniging/CKL9W2F/heren/1',
     }),
   ];
 

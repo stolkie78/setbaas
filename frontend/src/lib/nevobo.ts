@@ -92,19 +92,27 @@ export interface NevoboPouleIndeling {
 	indelingsletter: string;
 }
 
-// Team types as used in the Nevobo URL structure
-export const NEVOBO_TEAM_TYPES = [
-	{ value: 'heren', label: 'Heren' },
-	{ value: 'dames', label: 'Dames' },
-	{ value: 'jongens-a', label: 'Jongens A' },
-	{ value: 'jongens-b', label: 'Jongens B' },
-	{ value: 'jongens-c', label: 'Jongens C' },
-	{ value: 'meiden-a', label: 'Meiden A' },
-	{ value: 'meiden-b', label: 'Meiden B' },
-	{ value: 'meiden-c', label: 'Meiden C' },
-	{ value: 'cmv-6', label: 'CMV 6' },
-	{ value: 'cmv-4', label: 'CMV 4' },
-];
+/** The three parts that identify a team in the Nevobo API. */
+export interface NevoboTeamRef {
+	code: string;
+	teamType: string;
+	teamNumber: number;
+}
+
+/**
+ * Parse a volleybal.nl team URL into its Nevobo parts.
+ * Expected shape: https://www.volleybal.nl/competitie/vereniging/{code}/{type}/{number}
+ */
+export function parseNevoboTeamUrl(url?: string | null): NevoboTeamRef | null {
+	if (!url) return null;
+	const match = url.trim().match(/\/vereniging\/([^/?#]+)\/([^/?#]+)\/(\d+)/i);
+	if (!match) return null;
+
+	const number = parseInt(match[3], 10);
+	if (!Number.isFinite(number) || number < 1) return null;
+
+	return { code: match[1].toLowerCase(), teamType: match[2].toLowerCase(), teamNumber: number };
+}
 
 /**
  * Get matches for a team using the Nevobo team IRI filter

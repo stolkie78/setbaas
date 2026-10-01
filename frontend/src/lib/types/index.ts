@@ -56,10 +56,15 @@ export interface Club extends RecordModel {
 export interface Team extends RecordModel {
 	club?: string;
 	name: string;
-	nevobo_code?: string; // Nevobo verenigingscode (e.g. CKM1H25)
-	nevobo_team_type?: string; // e.g. 'hs', 'ds', 'mb', 'mj'
-	nevobo_team_number?: number; // e.g. 1
-	nevobo_url?: string; // URL to team page on volleybal.nl
+	/** Single source of truth for the Nevobo coupling: the team page on volleybal.nl,
+	 *  e.g. https://www.volleybal.nl/competitie/vereniging/{code}/{type}/{nummer} */
+	nevobo_url?: string;
+	/** @deprecated Replaced by nevobo_url; only still present on older records. */
+	nevobo_code?: string;
+	/** @deprecated Replaced by nevobo_url; only still present on older records. */
+	nevobo_team_type?: string;
+	/** @deprecated Replaced by nevobo_url; only still present on older records. */
+	nevobo_team_number?: number;
 	/** Team-specific AI system prompt; overrides the club prompt when set. */
 	ai_system_prompt?: string;
 	expand?: {
