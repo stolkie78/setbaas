@@ -1,0 +1,80 @@
+# SetBaas Test Environment
+# An isolated stack for local testing, with published ports so no reverse proxy
+# is needed. The frontend on port 3000 talks to PocketBase on 8090 directly
+# (see frontend/src/lib/pocketbase.ts).
+#
+# Usage (preferred):
+#   ./scripts/deploy.sh test
+#
+# Manual:
+#   docker compose -p setbaas-test -f docker-compose.test.yml --env-file .env.test up -d --build
+
+name: setbaas-test
+
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: setbaas-test-pb
+    restart: unless-stopped
+    ports:
+      - "${TEST_PB_PORT:-8090}:8090"
+    volumes:
+      - pb_test_data:/pb_data
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8090/api/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: setbaas-frontend-test:latest
+    container_name: setbaas-test-frontend
+    restart: unless-stopped
+    ports:
+      - "${TEST_HTTP_PORT:-3000}:3000"
+    environment:
+      - PUBLIC_POCKETBASE_URL=http://localhost:${TEST_PB_PORT:-8090}
+      - ORIGIN=http://localhost:${TEST_HTTP_PORT:-3000}
+      - BODY_SIZE_LIMIT=104857600
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@setbaas.nl}
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+
+  pb-setup:
+    image: alpine:3.19
+    container_name: setbaas-test-pb-setup
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl jq docker-cli > /dev/null 2>&1
+        docker exec setbaas-test-pb pocketbase superuser upsert "$$PB_ADMIN_EMAIL" "$$PB_ADMIN_PASSWORD" 2>/dev/null || true
+        sh /scripts/setup-collections.sh http://pocketbase:8090
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - OWNER_EMAIL=${OWNER_EMAIL:-}
+      - SETBAAS_ADMIN_EMAIL=${SETBAAS_ADMIN_EMAIL:-}
+      - SETBAAS_ADMIN_PASSWORD=${SETBAAS_ADMIN_PASSWORD:-}
+    restart: "no"
+    profiles: ["setup"]
+
+volumes:
+  pb_test_data:

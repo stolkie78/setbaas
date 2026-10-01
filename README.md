@@ -105,6 +105,31 @@ De app draait op:
 - **Frontend:** http://localhost:3000
 - **PocketBase Admin:** http://localhost:8090/_/
 
+### Testomgeving (geïsoleerd)
+
+Voor een volledig geïsoleerde testomgeving met eigen containers en eigen
+database is er één script dat alles regelt:
+
+```bash
+cp .env.test.example .env.test   # vul PB_ADMIN_EMAIL + PB_ADMIN_PASSWORD in
+./scripts/deploy.sh test         # bouwt, start, migreert en verifieert
+./scripts/deploy.sh test seed    # optioneel: demo data laden
+```
+
+Overige commando's: `status`, `logs`, `down` en `clean` (wist de testdatabase).
+Poorten zijn in te stellen met `TEST_HTTP_PORT` / `TEST_PB_PORT` in `.env.test`.
+
+Hetzelfde script deployt ook de andere omgevingen — zie
+[DEPLOYMENT.md](DEPLOYMENT.md#snelle-deploy-via-script):
+
+```bash
+./scripts/deploy.sh demo
+./scripts/deploy.sh prod
+```
+
+De schema-setup draait automatisch bij een clean install, bij een versiewijziging
+in `frontend/package.json` en wanneer `scripts/setup-collections.sh` is gewijzigd.
+
 ---
 
 ## Productie Deployment
@@ -139,7 +164,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml --profile setup run --rm pb-setup
 
 # 4. Updates deployen
-./scripts/deploy.sh
+./scripts/deploy.sh prod
 ```
 
 ### HTTPS & Meerdere Domeinen / Apps
@@ -196,8 +221,8 @@ Het script:
 ### Deploy met automatische backup
 
 ```bash
-./scripts/deploy.sh
-# Maakt een backup, haalt code op, bouwt, voert databasesetup uit
+./scripts/deploy.sh prod
+# Maakt een backup, haalt code op, bouwt, voert databasesetup uit indien nodig
 # en controleert of frontend en PocketBase bereikbaar zijn
 ```
 
@@ -356,6 +381,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.5.0** | 2026-10-01 | Het coachdashboard toont trainingen en wedstrijden nu in één chronologische **Tijdlijn** in plaats van twee losse kaarten, met een filter **Alles / Trainingen / Wedstrijden**. Elke kaart heeft een duidelijk label *Training* of *Wedstrijd*, en de links **Alle trainingen** en **Alle wedstrijden** staan boven de kaarten. Nieuw is één deploy-script voor alle omgevingen: `./scripts/deploy.sh <test\|demo\|prod>` bouwt, start en controleert de omgeving en voert de schema-setup alleen uit bij een clean install, een release-update of een gewijzigd setup-script. Er is een geïsoleerde testomgeving bijgekomen (`docker-compose.test.yml`) met `seed`- en `clean`-commando's. |
 | **v4.3.1** | 2026-09-15 | Backup/restore patch: PocketBase-volumes zijn gecorrigeerd naar **/pb_data**, het filesystem-backupscript detecteert het echte datapad, stopt PocketBase kort voor een consistente kopie en weigert lege backups. De app-backupdownload is betrouwbaarder gemaakt voor browsers en restore-uploads ondersteunen nu grotere backupbestanden via een expliciete 100 MB bodylimiet. |
 | **v4.3.0** | 2026-09-15 | Dashboardvernieuwing met **Lucide-iconen**, een paginabrede teamkaart voor club/team/seizoen/spelersaantal en uitgesplitste statistieken voor geplande en afgeronde trainingen en wedstrijden. Trainings- en wedstrijdacties zijn compacter gemaakt met icon-only knoppen. Wedstrijden hebben nu een volledig bewerkformulier én een aparte **Scores**-workflow voor setstanden, punten per speler en opmerkingen. |
 | **v4.2.1** | 2026-09-13 | De trainingsduur (in minuten) kan nu worden ingevuld bij het aanmaken en bewerken van een training. |

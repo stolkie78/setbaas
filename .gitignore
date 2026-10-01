@@ -6,3 +6,5 @@ build
 *.db
 .env.production
 .env.demo
+.deploy-state
+.env.test

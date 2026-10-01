@@ -17,19 +17,35 @@ BACKUP_DIR="${1:-$ROOT_DIR/backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="setbaas_backup_${TIMESTAMP}.tar.gz"
 
-# Detect compose file
-if [ -f "$ROOT_DIR/docker-compose.prod.yml" ] && docker compose -f "$ROOT_DIR/docker-compose.prod.yml" ps --services 2>/dev/null | grep -q pocketbase; then
+# Detect compose file. scripts/deploy.sh passes the environment's compose file
+# and project explicitly; otherwise fall back to auto-detection.
+COMPOSE_PROJECT="${SETBAAS_COMPOSE_PROJECT:-}"
+if [ -n "${SETBAAS_COMPOSE_FILE:-}" ]; then
+    case "$SETBAAS_COMPOSE_FILE" in
+        /*) COMPOSE_FILE="$SETBAAS_COMPOSE_FILE" ;;
+        *)  COMPOSE_FILE="$ROOT_DIR/$SETBAAS_COMPOSE_FILE" ;;
+    esac
+elif [ -f "$ROOT_DIR/docker-compose.prod.yml" ] && docker compose -f "$ROOT_DIR/docker-compose.prod.yml" ps --services 2>/dev/null | grep -q pocketbase; then
     COMPOSE_FILE="$ROOT_DIR/docker-compose.prod.yml"
 else
     COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 fi
+
+# Wrapper so every call below targets the same compose project
+dcp() {
+    if [ -n "$COMPOSE_PROJECT" ]; then
+        docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" "$@"
+    else
+        docker compose -f "$COMPOSE_FILE" "$@"
+    fi
+}
 
 echo "🏐 SetBaas Backup"
 echo "  Compose: $COMPOSE_FILE"
 echo "  Target:  $BACKUP_DIR/$BACKUP_FILE"
 
 # Check if PocketBase is running
-if ! docker compose -f "$COMPOSE_FILE" ps --services --filter status=running | grep -q pocketbase; then
+if ! dcp ps --services --filter status=running | grep -q pocketbase; then
     echo "❌ PocketBase container is not running"
     exit 1
 fi
@@ -42,7 +58,7 @@ TMPDIR=$(mktemp -d)
 POCKETBASE_STOPPED=false
 cleanup() {
     if [ "$POCKETBASE_STOPPED" = true ]; then
-        docker compose -f "$COMPOSE_FILE" start pocketbase >/dev/null 2>&1 || true
+        dcp start pocketbase >/dev/null 2>&1 || true
     fi
     rm -rf "$TMPDIR"
 }
@@ -50,9 +66,9 @@ trap cleanup EXIT
 
 # Detect the actual PocketBase data directory. The muchobien image runs with
 # --dir=/pb_data; older SetBaas compose files mounted /pb/pb_data instead.
-if docker compose -f "$COMPOSE_FILE" exec -T pocketbase test -s /pb_data/data.db; then
+if dcp exec -T pocketbase test -s /pb_data/data.db; then
     CONTAINER_DATA_DIR="/pb_data"
-elif docker compose -f "$COMPOSE_FILE" exec -T pocketbase test -s /pb/pb_data/data.db; then
+elif dcp exec -T pocketbase test -s /pb/pb_data/data.db; then
     CONTAINER_DATA_DIR="/pb/pb_data"
 else
     echo "❌ Geen PocketBase database gevonden in /pb_data of /pb/pb_data"
@@ -62,12 +78,12 @@ fi
 
 # Copy PocketBase data directory (database + uploads)
 echo "⏸️  PocketBase tijdelijk stoppen voor een consistente databasekopie..."
-docker compose -f "$COMPOSE_FILE" stop pocketbase >/dev/null
+dcp stop pocketbase >/dev/null
 POCKETBASE_STOPPED=true
 
 echo "📦 Copying PocketBase data..."
 echo "  Source: $CONTAINER_DATA_DIR"
-docker compose -f "$COMPOSE_FILE" cp "pocketbase:$CONTAINER_DATA_DIR/." "$TMPDIR/pb_data"
+dcp cp "pocketbase:$CONTAINER_DATA_DIR/." "$TMPDIR/pb_data"
 
 if [ ! -s "$TMPDIR/pb_data/data.db" ]; then
     echo "❌ Backup bevat geen geldige data.db"
@@ -85,7 +101,7 @@ if ! tar -tzf "$BACKUP_DIR/$BACKUP_FILE" | grep -qE '(^|/)pb_data/data\.db$'; th
 fi
 
 echo "▶️  PocketBase opnieuw starten..."
-docker compose -f "$COMPOSE_FILE" start pocketbase >/dev/null
+dcp start pocketbase >/dev/null
 POCKETBASE_STOPPED=false
 
 # Show result

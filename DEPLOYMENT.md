@@ -64,19 +64,59 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
 
 ## Snelle deploy via script
 
-Je kunt op de server ook direct het geautomatiseerde deploy-script draaien:
+Er is één deploy-script voor alle omgevingen:
 
 ```bash
 cd /home/giedo/setbaas
-./scripts/deploy.sh
+./scripts/deploy.sh <test|demo|prod> [commando] [opties]
+```
+
+Voorbeelden:
+
+```bash
+./scripts/deploy.sh prod            # productie deployen
+./scripts/deploy.sh demo            # demo deployen
+./scripts/deploy.sh test            # lokale testomgeving starten
+./scripts/deploy.sh prod status     # containers + deploy state tonen
+./scripts/deploy.sh prod --setup    # schema setup forceren
 ```
 
 Dit script:
-1. Maakt en verifieert automatisch een backup met `./scripts/backup.sh`
-2. Haalt de nieuwste code op via `git fetch --tags && git pull --ff-only`
-3. Bouwt de frontend opnieuw en herstart de services (`docker-compose.prod.yml`)
-4. Voert de database-setup uit (indien nodig)
-5. Doet een healthcheck op frontend en PocketBase
+1. Maakt en verifieert automatisch een backup met `./scripts/backup.sh` (prod + demo)
+2. Haalt de nieuwste code op via `git fetch --tags && git pull --ff-only` (prod + demo)
+3. Bouwt de frontend opnieuw en herstart de services
+4. Voert de database-setup alléén uit wanneer dat nodig is (zie hieronder)
+5. Doet een healthcheck op frontend en PocketBase en legt de deploy state vast
+
+### Wanneer draait de schema-setup?
+
+De setup is idempotent maar duurt lang, dus hij draait alleen bij:
+
+- **Clean install** — er is nog geen PocketBase database of nog geen deploy state
+- **Release update** — de versie in `frontend/package.json` is gewijzigd
+- **Schemawijziging** — `scripts/setup-collections.sh` is gewijzigd (checksum)
+- **Handmatig** — met de optie `--setup`
+
+De vorige deploy wordt bijgehouden in `.deploy-state/<omgeving>.env` (niet in git).
+Gebruik `--skip-setup` om de setup altijd over te slaan.
+
+### Omgevingen
+
+| Omgeving | Compose bestand            | Env bestand | Containers           |
+|----------|----------------------------|-------------|----------------------|
+| `test`   | `docker-compose.test.yml`  | `.env.test` | `setbaas-test-*`     |
+| `demo`   | `docker-compose.demo.yml`  | `.env.demo` | `setbaas-demo-*`     |
+| `prod`   | `docker-compose.prod.yml`  | `.env`      | `setbaas-pb/-frontend` |
+
+De testomgeving publiceert poorten rechtstreeks (standaard app `3000`, PocketBase
+`8090`) en heeft dus geen reverse proxy nodig. Extra commando's voor test:
+
+```bash
+./scripts/deploy.sh test seed    # demo data laden
+./scripts/deploy.sh test clean   # database wissen → volgende deploy is clean install
+```
+
+> `scripts/deploy-demo.sh` bestaat nog als wrapper en roept `deploy.sh demo` aan.
 
 ---
 
