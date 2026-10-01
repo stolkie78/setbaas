@@ -6,6 +6,18 @@ async function nevoboFetch(path: string): Promise<Response> {
 	return fetch(`${base}/api/nevobo?path=${encodeURIComponent(path)}`);
 }
 
+/** Raised when the /api/nevobo proxy itself is unreachable or misrouted. */
+export class NevoboProxyError extends Error {
+	constructor(public status: number) {
+		super(
+			status === 404
+				? 'De Nevobo-proxy (/api/nevobo) is niet bereikbaar. Waarschijnlijk stuurt de reverse proxy /api/* naar PocketBase in plaats van naar de frontend.'
+				: `De Nevobo-proxy gaf status ${status} terug.`
+		);
+		this.name = 'NevoboProxyError';
+	}
+}
+
 export interface NevoboSetstand {
 	set: number;
 	/** Points for teams[0] (the home team on the scoresheet) */
@@ -127,8 +139,9 @@ export async function getTeamMatches(
 ): Promise<NevoboMatch[]> {
 	const path = `/competitie/wedstrijden?team=${encodeURIComponent(`/competitie/teams/${code.toLowerCase()}/${teamType}/${teamNumber}`)}`;
 	const res = await nevoboFetch(path);
-	if (!res.ok) return [];
-	return res.json();
+	if (!res.ok) throw new NevoboProxyError(res.status);
+	const data = await res.json();
+	return Array.isArray(data) ? data : [];
 }
 
 /**

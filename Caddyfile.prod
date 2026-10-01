@@ -1,18 +1,36 @@
-# SetBaas production — setbaas.nl with automatic Let's Encrypt HTTPS
-# Caddy automatically obtains and renews certificates
+# SetBaas production — setbaas.nl met automatische Let's Encrypt HTTPS
+# Caddy vraagt certificaten zelf aan en vernieuwt ze.
+#
+# LET OP: de SvelteKit-routes onder /api/* moeten vóór de PocketBase catch-all
+# staan, anders gaan /api/nevobo, /api/ai, /api/invite en /api/backups naar
+# PocketBase en krijgt de app een 404 terug.
 
 setbaas.nl {
+	# SvelteKit server routes (vóór de PocketBase catch-all)
+	handle /api/nevobo* {
+		reverse_proxy frontend:3000
+	}
+	handle /api/ai* {
+		reverse_proxy frontend:3000
+	}
+	handle /api/invite* {
+		reverse_proxy frontend:3000
+	}
+	handle /api/backups* {
+		reverse_proxy frontend:3000
+	}
+
 	# PocketBase API + Admin UI
-	handle_path /api/* {
+	handle /api/* {
 		reverse_proxy pocketbase:8090
 	}
 
-	handle_path /_/* {
+	handle /_/* {
 		reverse_proxy pocketbase:8090
 	}
 
 	# Frontend app
-	handle /* {
+	handle {
 		reverse_proxy frontend:3000
 	}
 }

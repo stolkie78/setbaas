@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.5.2
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.5.3
 
 ## Tech Stack
 
@@ -381,6 +381,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.5.3** | 2026-10-01 | Herstelt de reverse proxy: Caddy stuurde `/api/*` volledig naar PocketBase, waardoor de SvelteKit-routes `/api/nevobo`, `/api/ai`, `/api/invite` en `/api/backups` een 404 teruggaven. In de app zag je dat als *"Geen wedstrijden gevonden voor dit team"* terwijl de Nevobo URL gewoon klopte. De site configs staan nu als drop-in in `caddy/conf.d/` met de SvelteKit-routes vóór de PocketBase catch-all, en `./scripts/deploy.sh <demo\|prod>` installeert, valideert en herlaadt ze automatisch (met terugrol bij een ongeldige config). Mislukt de Nevobo-proxy, dan toont het importscherm voortaan de echte foutmelding in plaats van een lege lijst. |
 | **v4.5.2** | 2026-10-01 | De Nevobo-import gebruikt nu uitsluitend de **Nevobo URL** die bij het team staat ingesteld (Instellingen → Teams). De losse velden voor verenigingscode, teamtype en teamnummer zijn uit het importscherm verdwenen; dat scherm toont alleen nog de ingestelde URL met een link om hem te wijzigen, en waarschuwt wanneer de URL ontbreekt of niet de vorm `.../competitie/vereniging/{code}/{type}/{nummer}` heeft. De import overschrijft de teaminstellingen niet langer. |
 | **v4.5.1** | 2026-10-01 | Nevobo-uitslagen worden weer correct opgehaald. De import las de velden `uitslag`/`team1` uit, terwijl de Nevobo API de uitslag levert als `setstanden[].puntenA/puntenB` en `eindstand`, waardoor er nooit een score werd opgeslagen. Bij importeren én verversen worden nu de **eindstand, setstanden en de status Gespeeld** weggeschreven, en het importoverzicht toont de uitslag en setstanden per wedstrijd. |
 | **v4.5.0** | 2026-10-01 | Het coachdashboard toont trainingen en wedstrijden nu in één chronologische **Tijdlijn** in plaats van twee losse kaarten, met een filter **Alles / Trainingen / Wedstrijden**. Elke kaart heeft een duidelijk label *Training* of *Wedstrijd*, en de links **Alle trainingen** en **Alle wedstrijden** staan boven de kaarten. Nieuw is één deploy-script voor alle omgevingen: `./scripts/deploy.sh <test\|demo\|prod>` bouwt, start en controleert de omgeving en voert de schema-setup alleen uit bij een clean install, een release-update of een gewijzigd setup-script. Er is een geïsoleerde testomgeving bijgekomen (`docker-compose.test.yml`) met `seed`- en `clean`-commando's. |

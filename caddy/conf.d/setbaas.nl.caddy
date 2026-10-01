@@ -1,0 +1,45 @@
+# SetBaas — productie (setbaas.nl)
+#
+# Drop-in voor de apart beheerde Caddy-instantie:
+#   cp caddy/conf.d/setbaas.nl.caddy ~/caddy/conf.d/setbaas.nl.caddy
+#   docker exec <caddy-container> caddy reload --config /etc/caddy/Caddyfile
+#
+# Vereist: de SetBaas-containers hangen aan het externe netwerk `caddy-net`
+# (zie docker-compose.prod.yml), zodat Caddy ze op containernaam kan bereiken.
+#
+# LET OP — volgorde is functioneel, niet cosmetisch.
+# Caddy kiest binnen een site het handle-blok met de meest specifieke matcher,
+# maar bij gelijke specificiteit telt de volgorde. De SvelteKit-routes staan
+# daarom expliciet vóór de PocketBase catch-all `/api/*`. Staan ze erachter,
+# dan beantwoordt PocketBase /api/nevobo, /api/ai, /api/invite en /api/backups
+# met een 404 en lijkt het in de app alsof er geen data is.
+
+setbaas.nl {
+	# SvelteKit server routes — moeten vóór de PocketBase catch-all staan
+	@sveltekit path /api/nevobo* /api/ai* /api/invite* /api/backups*
+	handle @sveltekit {
+		reverse_proxy setbaas-frontend:3000
+	}
+
+	# PocketBase REST API en admin UI
+	handle /api/* {
+		reverse_proxy setbaas-pb:8090
+	}
+	handle /_/* {
+		reverse_proxy setbaas-pb:8090
+	}
+
+	# Frontend (SvelteKit)
+	handle {
+		reverse_proxy setbaas-frontend:3000
+	}
+
+	encode zstd gzip
+	log {
+		output file /var/log/caddy/setbaas.nl.log
+	}
+}
+
+www.setbaas.nl {
+	redir https://setbaas.nl{uri} permanent
+}

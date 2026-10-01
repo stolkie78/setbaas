@@ -57,10 +57,18 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
    - Vooral bij database, restore, volumes, secrets, DNS/SSL en OAuth.
 
 11. ** Caddy draait als aparte service op de productie machine **
-   - Pas de Caddyfiles aan in de repo waar nodig en vermeldt de acties die nodig zijn om op product te kunnen releasen indien nodig
-   - De caddy instantie kijkt in $HOME/caddy/conf.d/*.caddy files
+   - De site configs staan in de repo onder `caddy/conf.d/` en worden als drop-in geïnstalleerd:
+     `caddy/conf.d/setbaas.nl.caddy` (prod) en `caddy/conf.d/demo.setbaas.nl.caddy` (demo).
+   - `./scripts/deploy.sh <demo|prod>` kopieert dat bestand naar de conf.d van de centrale Caddy,
+     valideert het en herlaadt Caddy. Alleen de reverse proxy bijwerken kan met
+     `./scripts/deploy.sh prod caddy`.
+   - De caddy instantie kijkt in `/home/giedo/apps/caddy/conf.d/*.caddy`. Afwijkend pad? Zet
+     `CADDY_CONF_DIR` in het env-bestand.
    - Naming is [domainname].caddy dus setbaas.nl.caddy in dit geval
    - Het caddy docker network heet: caddy-net
+   - **Volgorde in de site config is functioneel**: de SvelteKit-routes `/api/nevobo`, `/api/ai`,
+     `/api/invite` en `/api/backups` moeten vóór de PocketBase catch-all `/api/*` staan. Anders
+     beantwoordt PocketBase ze met een 404 en lijkt het in de app alsof er geen data is.
 
 ## Snelle deploy via script
 
@@ -79,6 +87,8 @@ Voorbeelden:
 ./scripts/deploy.sh test            # lokale testomgeving starten
 ./scripts/deploy.sh prod status     # containers + deploy state tonen
 ./scripts/deploy.sh prod --setup    # schema setup forceren
+./scripts/deploy.sh prod caddy      # alleen de Caddy site config installeren/herladen
+./scripts/deploy.sh prod --no-caddy # deployen zonder de reverse proxy aan te raken
 ```
 
 Dit script:
@@ -86,7 +96,34 @@ Dit script:
 2. Haalt de nieuwste code op via `git fetch --tags && git pull --ff-only` (prod + demo)
 3. Bouwt de frontend opnieuw en herstart de services
 4. Voert de database-setup alléén uit wanneer dat nodig is (zie hieronder)
-5. Doet een healthcheck op frontend en PocketBase en legt de deploy state vast
+5. Installeert en herlaadt de Caddy site config als die afwijkt (prod + demo)
+6. Doet een healthcheck op frontend en PocketBase, controleert dat `/api/nevobo` bij de
+   frontend uitkomt, en legt de deploy state vast
+
+### Reverse proxy (Caddy)
+
+Caddy draait als aparte, centraal beheerde instantie. De site config per omgeving staat in de
+repo en wordt bij elke deploy vergeleken met wat er geïnstalleerd is:
+
+| Omgeving | Site config in de repo                  |
+|----------|-----------------------------------------|
+| `demo`   | `caddy/conf.d/demo.setbaas.nl.caddy`    |
+| `prod`   | `caddy/conf.d/setbaas.nl.caddy`         |
+| `test`   | geen — poorten worden direct gepubliceerd |
+
+Verandert er niets, dan doet de deploy niets. Wijkt het af, dan wordt het bestand gekopieerd,
+gevalideerd met `caddy validate` en pas daarna herladen. Is de nieuwe config ongeldig of
+mislukt de reload, dan wordt de vorige versie automatisch teruggezet.
+
+Instelbaar via het env-bestand:
+
+| Variabele           | Standaard                      | Betekenis                                   |
+|---------------------|--------------------------------|---------------------------------------------|
+| `CADDY_CONF_DIR`    | `$HOME/apps/caddy/conf.d`      | Map waar de centrale Caddy drop-ins leest    |
+| `CADDY_CONTAINER`   | automatisch gedetecteerd        | Naam van de Caddy container                  |
+| `CADDY_CONFIG_PATH` | `/etc/caddy/Caddyfile`         | Hoofd-Caddyfile binnen die container         |
+
+> De hoofd-Caddyfile moet de drop-ins inlezen met `import /etc/caddy/conf.d/*.caddy`.
 
 ### Wanneer draait de schema-setup?
 

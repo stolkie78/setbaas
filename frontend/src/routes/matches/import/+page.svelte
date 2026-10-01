@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { pb } from '$lib/pocketbase';
-	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, getNevoboResult, parseNevoboTeamUrl } from '$lib/nevobo';
+	import { getTeamMatches, resolvePouleIndeling, resolveSporthal, getNevoboResult, parseNevoboTeamUrl, NevoboProxyError } from '$lib/nevobo';
 	import type { NevoboMatch, NevoboTeamRef } from '$lib/nevobo';
 	import type { Team } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
@@ -87,7 +87,7 @@
 				})
 			);
 		} catch (e) {
-			error = `Fout bij ophalen: ${e}`;
+			error = e instanceof NevoboProxyError ? e.message : `Fout bij ophalen: ${e}`;
 		} finally {
 			loading = false;
 		}

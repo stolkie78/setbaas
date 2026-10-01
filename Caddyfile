@@ -1,14 +1,32 @@
 # SetBaas on www.readplando.com/setbaas
 # PocketBase API at /setbaas/api, Frontend at /setbaas
+#
+# LET OP: de SvelteKit-routes onder /setbaas/api/* moeten vóór de PocketBase
+# catch-all staan, anders gaan /api/nevobo, /api/ai, /api/invite en
+# /api/backups naar PocketBase en krijgt de app een 404 terug.
 
 www.readplando.com {
-	# PocketBase API + Admin
-	handle_path /setbaas/api/* {
-		reverse_proxy pocketbase:8090
+	# SvelteKit server routes (vóór de PocketBase catch-all)
+	handle /setbaas/api/nevobo* {
+		reverse_proxy frontend:3000
+	}
+	handle /setbaas/api/ai* {
+		reverse_proxy frontend:3000
+	}
+	handle /setbaas/api/invite* {
+		reverse_proxy frontend:3000
+	}
+	handle /setbaas/api/backups* {
+		reverse_proxy frontend:3000
 	}
 
 	# PocketBase OAuth redirect
 	handle /setbaas/api/oauth2-redirect {
+		reverse_proxy pocketbase:8090
+	}
+
+	# PocketBase API + Admin
+	handle_path /setbaas/api/* {
 		reverse_proxy pocketbase:8090
 	}
 

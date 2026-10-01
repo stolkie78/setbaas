@@ -11,6 +11,7 @@
 #   down      stop and remove the environment's containers
 #   status    show container status and the recorded deploy state
 #   logs      follow the logs
+#   caddy     only install/reload the Caddy site config for this environment
 #   seed      load demo data (test only, destructive)
 #   clean     remove the environment's database (test only, destructive)
 #
@@ -21,11 +22,20 @@
 #   --no-pull         skip git pull
 #   --no-backup       skip the pre-deploy backup
 #   --no-build        reuse the existing frontend image
+#   --caddy           force reinstall of the Caddy site config
+#   --no-caddy        leave the Caddy site config untouched
 #   -y, --yes         do not ask for confirmation on destructive actions
 #   -h, --help        show this help
 #
 # Schema setup runs automatically on a clean install, on a release update
 # (frontend/package.json version change) and when setup-collections.sh changed.
+#
+# Caddy runs as a separately managed instance. demo and prod ship a drop-in site
+# config in caddy/conf.d/; the deploy copies it into the Caddy conf.d directory
+# and reloads Caddy whenever it differs. Override the defaults in the env file:
+#   CADDY_CONF_DIR      default $HOME/apps/caddy/conf.d
+#   CADDY_CONTAINER     default: autodetected from the running caddy image
+#   CADDY_CONFIG_PATH   default /etc/caddy/Caddyfile
 
 set -euo pipefail
 
@@ -56,12 +66,14 @@ DO_PULL=""
 DO_BACKUP=""
 DO_BUILD=true
 ASSUME_YES=false
+DO_CADDY=""
+FORCE_CADDY=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
         test|demo|prod)        ENVIRONMENT="$1" ;;
         production)            ENVIRONMENT="prod" ;;
-        deploy|down|status|logs|seed|clean) COMMAND="$1" ;;
+        deploy|down|status|logs|seed|clean|caddy) COMMAND="$1" ;;
         up)                    COMMAND="deploy" ;;
         --setup|--force-setup) FORCE_SETUP=true ;;
         --skip-setup)          SKIP_SETUP=true ;;
@@ -70,6 +82,8 @@ while [ $# -gt 0 ]; do
         --no-backup)           DO_BACKUP=false ;;
         --backup)              DO_BACKUP=true ;;
         --no-build)            DO_BUILD=false ;;
+        --caddy)               DO_CADDY=true; FORCE_CADDY=true ;;
+        --no-caddy)            DO_CADDY=false ;;
         -y|--yes)              ASSUME_YES=true ;;
         -h|--help)             usage 0 ;;
         *) echo "❌ Onbekend argument: $1" >&2; usage 1 ;;
@@ -90,6 +104,7 @@ case "$ENVIRONMENT" in
         PB_DATA_REF="setbaas-test_pb_test_data"
         DEFAULT_PULL=false
         DEFAULT_BACKUP=false
+        CADDY_SITE_FILE=""
         ;;
     demo)
         COMPOSE_FILE="docker-compose.demo.yml"
@@ -100,6 +115,7 @@ case "$ENVIRONMENT" in
         PB_DATA_REF="$ROOT_DIR/pb_data_demo/data.db"
         DEFAULT_PULL=true
         DEFAULT_BACKUP=true
+        CADDY_SITE_FILE="caddy/conf.d/demo.setbaas.nl.caddy"
         ;;
     prod)
         COMPOSE_FILE="docker-compose.prod.yml"
@@ -112,11 +128,20 @@ case "$ENVIRONMENT" in
         PB_DATA_REF="$ROOT_DIR/pb_data/data.db"
         DEFAULT_PULL=true
         DEFAULT_BACKUP=true
+        CADDY_SITE_FILE="caddy/conf.d/setbaas.nl.caddy"
         ;;
 esac
 
 [ -n "$DO_PULL" ]   || DO_PULL="$DEFAULT_PULL"
 [ -n "$DO_BACKUP" ] || DO_BACKUP="$DEFAULT_BACKUP"
+if [ -z "$DO_CADDY" ]; then
+    [ -n "$CADDY_SITE_FILE" ] && DO_CADDY=true || DO_CADDY=false
+fi
+
+# Caddy runs as a separately managed instance; these can be overridden per env.
+CADDY_CONF_DIR="${CADDY_CONF_DIR:-$HOME/apps/caddy/conf.d}"
+CADDY_CONTAINER="${CADDY_CONTAINER:-}"
+CADDY_CONFIG_PATH="${CADDY_CONFIG_PATH:-/etc/caddy/Caddyfile}"
 
 [ -f "$COMPOSE_FILE" ] || die "Compose bestand ontbreekt: $COMPOSE_FILE"
 if [ ! -f "$ENV_FILE" ]; then
@@ -236,6 +261,107 @@ site_url() {
     esac
 }
 
+# === Caddy (separately managed instance) ===
+
+# Finds the running Caddy container, unless CADDY_CONTAINER says which one.
+find_caddy_container() {
+    if [ -n "$CADDY_CONTAINER" ]; then
+        echo "$CADDY_CONTAINER"
+        return 0
+    fi
+    docker ps --format '{{.Names}}\t{{.Image}}' 2>/dev/null \
+        | awk -F'\t' '$2 ~ /(^|\/)caddy(:|$)/ {print $1; exit}'
+}
+
+# Installs the drop-in site config and reloads Caddy when it changed.
+# Validates before reloading and rolls back a broken config.
+deploy_caddy() {
+    if [ -z "$CADDY_SITE_FILE" ]; then
+        info "Geen Caddy site config voor '$ENVIRONMENT' — overgeslagen"
+        return 0
+    fi
+
+    local src="$ROOT_DIR/$CADDY_SITE_FILE"
+    [ -f "$src" ] || die "Caddy site config ontbreekt: $CADDY_SITE_FILE"
+
+    if [ ! -d "$CADDY_CONF_DIR" ]; then
+        warn "Caddy conf.d map niet gevonden: $CADDY_CONF_DIR"
+        info "Zet CADDY_CONF_DIR in $ENV_FILE of gebruik --no-caddy."
+        return 1
+    fi
+
+    local dest="$CADDY_CONF_DIR/$(basename "$src")"
+    info "Site config: $dest"
+
+    if [ "$FORCE_CADDY" != true ] && cmp -s "$src" "$dest"; then
+        ok "Caddy config is al up-to-date"
+        return 0
+    fi
+
+    local caddy_container
+    caddy_container="$(find_caddy_container)"
+    if [ -z "$caddy_container" ]; then
+        warn "Geen draaiende Caddy container gevonden"
+        info "Zet CADDY_CONTAINER in $ENV_FILE of gebruik --no-caddy."
+        return 1
+    fi
+    info "Caddy container: $caddy_container"
+
+    # Keep the previous version so a broken config can be rolled back.
+    local backup=""
+    if [ -f "$dest" ]; then
+        backup="$dest.bak-$(date -u +%Y%m%d%H%M%S)"
+        cp "$dest" "$backup"
+    fi
+
+    cp "$src" "$dest"
+
+    if ! docker exec "$caddy_container" caddy validate \
+            --adapter caddyfile --config "$CADDY_CONFIG_PATH" >/dev/null 2>&1; then
+        if [ -n "$backup" ]; then
+            cp "$backup" "$dest"
+            rm -f "$backup"
+            die "Caddy config is ongeldig — vorige versie teruggezet"
+        fi
+        rm -f "$dest"
+        die "Caddy config is ongeldig — nieuwe site config weer verwijderd"
+    fi
+
+    if ! docker exec "$caddy_container" caddy reload \
+            --config "$CADDY_CONFIG_PATH" >/dev/null 2>&1; then
+        if [ -n "$backup" ]; then
+            cp "$backup" "$dest"
+            docker exec "$caddy_container" caddy reload \
+                --config "$CADDY_CONFIG_PATH" >/dev/null 2>&1 || true
+            rm -f "$backup"
+        fi
+        die "Caddy reload mislukt"
+    fi
+
+    [ -n "$backup" ] && rm -f "$backup"
+    ok "Caddy config geïnstalleerd en herladen"
+}
+
+# The SvelteKit /api routes must not be swallowed by PocketBase. A 404 here
+# means the reverse proxy sends /api/* to PocketBase instead of the frontend.
+verify_api_routing() {
+    local url
+    url="$(site_url)"
+    case "$url" in http*) ;; *) return 0 ;; esac
+    command -v curl >/dev/null 2>&1 || return 0
+
+    local code
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
+        "$url/api/nevobo?path=%2Fcompetitie%2Fteams%2Fckl9n3n%2Fdames%2F1" || echo "000")
+
+    case "$code" in
+        200) ok "Nevobo proxy bereikbaar (/api/nevobo)" ;;
+        404) warn "/api/nevobo geeft 404 — Caddy stuurt /api/* naar PocketBase in plaats van de frontend" ;;
+        000) warn "/api/nevobo kon niet gecontroleerd worden ($url niet bereikbaar)" ;;
+        *)   warn "/api/nevobo geeft status $code" ;;
+    esac
+}
+
 # === Commands ===
 cmd_down() {
     step "Omgeving '$ENVIRONMENT' stoppen..."
@@ -257,6 +383,21 @@ cmd_status() {
         info "PocketBase data: aanwezig ($PB_DATA_REF)"
     else
         info "PocketBase data: leeg ($PB_DATA_REF)"
+    fi
+    step "Reverse proxy (Caddy)"
+    if [ -z "$CADDY_SITE_FILE" ]; then
+        info "Geen site config voor '$ENVIRONMENT'"
+    else
+        local dest="$CADDY_CONF_DIR/$(basename "$CADDY_SITE_FILE")"
+        info "Repo:        $CADDY_SITE_FILE"
+        info "Geïnstalleerd: $dest"
+        if [ ! -f "$dest" ]; then
+            warn "Nog niet geïnstalleerd — draai: ./scripts/deploy.sh $ENVIRONMENT caddy"
+        elif cmp -s "$ROOT_DIR/$CADDY_SITE_FILE" "$dest"; then
+            ok "Up-to-date"
+        else
+            warn "Wijkt af van de repo — draai: ./scripts/deploy.sh $ENVIRONMENT caddy"
+        fi
     fi
 }
 
@@ -280,6 +421,12 @@ cmd_seed() {
     confirm "Dit overschrijft de bestaande test data. Doorgaan?" || die "Afgebroken"
     PB_URL="http://localhost:${TEST_PB_PORT:-8090}" node scripts/seed-test-data.mjs
     ok "Demo data geladen"
+}
+
+cmd_caddy() {
+    step "Caddy site config voor '$ENVIRONMENT'..."
+    deploy_caddy || die "Caddy config niet bijgewerkt"
+    verify_api_routing
 }
 
 cmd_deploy() {
@@ -336,12 +483,20 @@ cmd_deploy() {
         info "Niets gewijzigd — setup overgeslagen (forceer met --setup)"
     fi
 
-    step "Stap 5: Services controleren..."
+    step "Stap 5: Reverse proxy (Caddy)..."
+    if [ "$DO_CADDY" = true ]; then
+        deploy_caddy || warn "Caddy config niet bijgewerkt — controleer de reverse proxy handmatig"
+    else
+        info "Overgeslagen (--no-caddy)"
+    fi
+
+    step "Stap 6: Services controleren..."
     if ! wait_for_health; then
         dc ps
         die "Deploy mislukt: services zijn niet bereikbaar"
     fi
     ok "Frontend en PocketBase zijn bereikbaar"
+    verify_api_routing
 
     write_state
 
@@ -359,6 +514,7 @@ case "$COMMAND" in
     down)   cmd_down ;;
     status) cmd_status ;;
     logs)   cmd_logs ;;
+    caddy)  cmd_caddy ;;
     seed)   cmd_seed ;;
     clean)  cmd_clean ;;
 esac
