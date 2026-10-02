@@ -235,7 +235,7 @@
 				</div>
 			</div>
 
-			<div class="mb-4 flex flex-wrap items-center justify-end gap-x-5 gap-y-2 text-sm">
+			<div class="mb-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
 				{#if dashboardFilter !== 'match'}
 					<a href="{base}/trainings" class="text-primary-600 hover:underline">Alle trainingen</a>
 				{/if}
@@ -252,9 +252,15 @@
 							<span class="absolute -left-[1.72rem] top-5 h-3 w-3 rounded-full border-2 border-white {item.active ? 'bg-green-500' : item.type === 'training' ? 'bg-blue-500' : 'bg-cyan-500'} dark:border-gray-900"></span>
 							<div class="flex flex-wrap items-start justify-between gap-2">
 								<div class="min-w-0">
-									<div class="flex flex-wrap items-center gap-2">
+									<div>
 										{#if item.type === 'training'}
-											<span class="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">Training</span>
+											<span class="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">Training</span>
+										{:else}
+											<span class="inline-block rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300">Wedstrijd</span>
+										{/if}
+									</div>
+									<div class="mt-1.5 flex flex-wrap items-center gap-2">
+										{#if item.type === 'training'}
 											<a href="{base}/trainings/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100">
 												{eventDate.toLocaleDateString('nl-NL', { weekday: 'long' })}
 											</a>
@@ -268,7 +274,6 @@
 												</span>
 											{/if}
 										{:else}
-											<span class="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300">Wedstrijd</span>
 											<a href="{base}/matches/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100">
 												{item.record.opponent}
 											</a>

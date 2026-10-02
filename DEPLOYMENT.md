@@ -21,42 +21,49 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
 
 4. **Altijd de juiste Compose-file gebruiken**
    - Productie: `docker-compose.prod.yml`
-   - Lokaal/test: `docker-compose.yml`
+   - Demo: `docker-compose.demo.yml`
+   - Test/lokaal bekijken: `docker-compose.test.yml` via `./scripts/deploy.sh test`
    - Niet gokken op basis van de huidige map.
 
-5. **Alleen fast-forward pull op productie**
+5. **Lokaal bekijken doe je altijd via de testomgeving**
+   - Gebruik **altijd** `./scripts/deploy.sh test` — nooit `npm run dev` of een losse vite-server.
+   - De app draait dan op **http://localhost:3000** en PocketBase op **http://localhost:8090**.
+   - Zo kijk je altijd naar een volledige omgeving mét database in plaats van een frontend zonder data.
+   - Handige extra's: `./scripts/deploy.sh test seed` (demo data) en `./scripts/deploy.sh test clean` (database wissen).
+
+6. **Alleen fast-forward pull op productie**
 
    ```bash
    git pull --ff-only
    ```
 
-6. **Frontend altijd rebuilden**
+7. **Frontend altijd rebuilden**
 
    ```bash
    docker compose -f docker-compose.prod.yml build frontend
    docker compose -f docker-compose.prod.yml up -d
    ```
 
-7. **PocketBase alleen recreaten als dat nodig is**
+8. **PocketBase alleen recreaten als dat nodig is**
    - Bij gewone frontend/UI-releases: PocketBase niet onnodig vervangen.
    - Bij database-, restore- of volume-aanpassingen: eerst extra backup en expliciet plan.
 
-8. **Release pas klaar noemen als alles is gecontroleerd**
+9. **Release pas klaar noemen als alles is gecontroleerd**
    - Git tag bestaat.
    - Code staat op `main`.
    - Productie draait op https://setbaas.nl.
    - Healthcheck is goed (`http://localhost:8090/api/health` of via reverse proxy).
    - Backup werkt na deploy nog steeds.
 
-9. **Nooit tags overschrijven, verplaatsen of hergebruiken (Immutable Tags)**
+10. **Nooit tags overschrijven, verplaatsen of hergebruiken (Immutable Tags)**
    - Overschrijf, delete of force-push **nooit** een bestaande Git tag (`git tag -f`, `git push --delete`, etc.).
    - Is een tag eenmaal aangemaakt of gepusht? Dan is die versie definitief.
    - Moet er een fix of wijziging mee? Bump **altijd** naar een nieuw versienummer in `frontend/package.json` (bijv. van `v4.4.0` naar `v4.4.1`) en maak een nieuwe tag aan.
 
-10. **Bij twijfel stoppen en vragen**
+11. **Bij twijfel stoppen en vragen**
    - Vooral bij database, restore, volumes, secrets, DNS/SSL en OAuth.
 
-11. ** Caddy draait als aparte service op de productie machine **
+12. ** Caddy draait als aparte service op de productie machine **
    - De site configs staan in de repo onder `caddy/conf.d/` en worden als drop-in geïnstalleerd:
      `caddy/conf.d/setbaas.nl.caddy` (prod) en `caddy/conf.d/demo.setbaas.nl.caddy` (demo).
    - `./scripts/deploy.sh <demo|prod>` kopieert dat bestand naar de conf.d van de centrale Caddy,
