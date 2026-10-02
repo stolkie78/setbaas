@@ -246,13 +246,17 @@
 
 			{#if timelineItems.length > 0}
 				<div class="ml-2 space-y-4 border-l-2 border-gray-200 pl-5 dark:border-gray-700">
-					{#each timelineItems as item (item.type + item.record.id)}
+					{#each timelineItems as item, i (item.type + item.record.id)}
 						{@const eventDate = new Date(item.record.date)}
-						<div class="relative rounded-xl border p-4 {item.active ? 'border-green-400 bg-green-50/70 dark:border-green-700 dark:bg-green-900/20' : item.type === 'training' ? 'border-blue-200 bg-blue-50/40 dark:border-blue-900 dark:bg-blue-900/10' : 'border-cyan-200 bg-cyan-50/40 dark:border-cyan-900 dark:bg-cyan-900/10'}">
-							<span class="absolute -left-[1.72rem] top-5 h-3 w-3 rounded-full border-2 border-white {item.active ? 'bg-green-500' : item.type === 'training' ? 'bg-blue-500' : 'bg-cyan-500'} dark:border-gray-900"></span>
+						{@const isNext = i === 0}
+						<div class="relative rounded-xl p-4 {isNext ? 'border-2 shadow-lg ring-4 sm:p-5 ' + (item.active ? 'ring-green-500/15' : item.type === 'training' ? 'ring-blue-500/15' : 'ring-cyan-500/15') : 'border'} {item.active ? 'border-green-400 bg-green-50/70 dark:border-green-700 dark:bg-green-900/20' : isNext ? (item.type === 'training' ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/30' : 'border-cyan-400 bg-cyan-50 dark:border-cyan-600 dark:bg-cyan-900/30') : item.type === 'training' ? 'border-blue-200 bg-blue-50/40 dark:border-blue-900 dark:bg-blue-900/10' : 'border-cyan-200 bg-cyan-50/40 dark:border-cyan-900 dark:bg-cyan-900/10'}">
+							<span class="absolute rounded-full border-2 border-white {isNext ? '-left-[1.85rem] top-5 h-4 w-4' : '-left-[1.72rem] top-5 h-3 w-3'} {item.active ? 'bg-green-500' : item.type === 'training' ? 'bg-blue-500' : 'bg-cyan-500'} dark:border-gray-900"></span>
 							<div class="flex flex-wrap items-start justify-between gap-2">
 								<div class="min-w-0">
-									<div>
+									<div class="flex flex-wrap items-center gap-1.5">
+										{#if isNext}
+											<span class="inline-block rounded-full bg-primary-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">Eerstvolgend</span>
+										{/if}
 										{#if item.type === 'training'}
 											<span class="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">Training</span>
 										{:else}
@@ -261,7 +265,7 @@
 									</div>
 									<div class="mt-1.5 flex flex-wrap items-center gap-2">
 										{#if item.type === 'training'}
-											<a href="{base}/trainings/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100">
+											<a href="{base}/trainings/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100 {isNext ? 'text-xl' : ''}">
 												{eventDate.toLocaleDateString('nl-NL', { weekday: 'long' })}
 											</a>
 											{#if item.active}
@@ -274,7 +278,7 @@
 												</span>
 											{/if}
 										{:else}
-											<a href="{base}/matches/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100">
+											<a href="{base}/matches/{item.record.id}" class="font-semibold text-gray-900 hover:text-primary-600 dark:text-gray-100 {isNext ? 'text-xl' : ''}">
 												{item.record.opponent}
 											</a>
 											<span class="text-xs text-gray-500 dark:text-gray-400">{item.record.home_away === 'home' ? '(Thuis)' : '(Uit)'}</span>
@@ -286,7 +290,7 @@
 											{/if}
 										{/if}
 									</div>
-									<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+									<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 {isNext ? 'text-sm text-gray-700 dark:text-gray-300' : 'text-xs text-gray-500 dark:text-gray-400'}">
 										<span class="inline-flex items-center gap-1">
 											<CalendarDays size={15} />
 											{eventDate.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
