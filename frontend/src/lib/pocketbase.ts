@@ -1,4 +1,5 @@
 import PocketBase from 'pocketbase';
+import { base } from '$app/paths';
 import { writable } from 'svelte/store';
 import type {
 	Player,
@@ -833,4 +834,118 @@ export async function updatePlayerExtraActivities(
 	extra_activities: Player['extra_activities']
 ): Promise<Player> {
 	return pb.collection('players').update<Player>(id, { extra_activities });
+}
+
+// === Login by e-mail code (OTP) & password reset ===
+// The bundled SDK (0.21) predates PocketBase's OTP endpoints, so they are
+// called directly. Requesting a code for an unknown address still returns an
+// otpId (PocketBase hides which accounts exist); the login then simply fails.
+
+export async function requestLoginCode(email: string): Promise<string> {
+	const res = await pb.send('/api/collections/users/request-otp', {
+		method: 'POST',
+		body: { email },
+	});
+	return res.otpId;
+}
+
+export async function loginWithCode(otpId: string, code: string): Promise<void> {
+	const res = await pb.send('/api/collections/users/auth-with-otp', {
+		method: 'POST',
+		body: { otpId, password: code },
+	});
+	pb.authStore.save(res.token, res.record);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+	await pb.collection('users').requestPasswordReset(email);
+}
+
+export async function confirmPasswordReset(token: string, password: string): Promise<void> {
+	await pb.collection('users').confirmPasswordReset(token, password, password);
+}
+
+// === Messages (built-in mailbox) ===
+// Created server side only (see /api/notify); a user can read, mark and
+// delete their own messages.
+
+export interface Message {
+	id: string;
+	recipient: string;
+	sender?: string;
+	kind: 'absence' | 'attendance_restored' | 'system';
+	subject: string;
+	body?: string;
+	link?: string;
+	read?: boolean;
+	emailed?: boolean;
+	team?: string;
+	player?: string;
+	training?: string;
+	match?: string;
+	created: string;
+}
+
+export const unreadMessageCount = writable(0);
+
+export async function getMyMessages(): Promise<Message[]> {
+	const userId = pb.authStore.model?.id;
+	if (!userId) return [];
+	return pb.collection('messages').getFullList<Message>({
+		filter: `recipient = "${userId}"`,
+		sort: '-created',
+	});
+}
+
+export async function refreshUnreadMessageCount(): Promise<number> {
+	const userId = pb.authStore.model?.id;
+	if (!userId) {
+		unreadMessageCount.set(0);
+		return 0;
+	}
+	try {
+		const res = await pb.collection('messages').getList(1, 1, {
+			filter: `recipient = "${userId}" && read = false`,
+			fields: 'id',
+		});
+		unreadMessageCount.set(res.totalItems);
+		return res.totalItems;
+	} catch {
+		// Collection may not exist yet on an install that has not run setup.
+		unreadMessageCount.set(0);
+		return 0;
+	}
+}
+
+export async function markMessageRead(id: string, read = true): Promise<void> {
+	await pb.collection('messages').update(id, { read });
+	await refreshUnreadMessageCount();
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+	await pb.collection('messages').delete(id);
+	await refreshUnreadMessageCount();
+}
+
+export async function setMailOptOut(userId: string, optOut: boolean): Promise<void> {
+	await pb.collection('users').update(userId, { mail_opt_out: optOut });
+}
+
+/**
+ * Tell the server a player changed their own attendance. The server reads the
+ * stored status itself and notifies the linked trainers on an absence. Never
+ * throws: a failed notification must not break saving the attendance.
+ */
+export async function notifyAttendanceChange(type: 'training' | 'match', eventId: string, playerId: string): Promise<void> {
+	try {
+		await fetch(`${base}/api/notify/attendance`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+			body: JSON.stringify({ type, eventId, playerId }),
+			// Survives the page being closed right after changing a status.
+			keepalive: true,
+		});
+	} catch (e) {
+		console.error('Kon trainers niet informeren:', e);
+	}
 }

@@ -22,6 +22,9 @@ ${DOMAIN} {
     handle /api/backups* {
         reverse_proxy frontend:3000
     }
+    handle /api/notify* {
+        reverse_proxy frontend:3000
+    }
     # PocketBase API
     handle /api/* {
         reverse_proxy pocketbase:8090
@@ -56,6 +59,9 @@ cat <<EOF
         reverse_proxy frontend:3000
     }
     handle /api/backups* {
+        reverse_proxy frontend:3000
+    }
+    handle /api/notify* {
         reverse_proxy frontend:3000
     }
     # PocketBase API

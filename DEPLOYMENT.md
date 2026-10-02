@@ -74,7 +74,7 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
    - Naming is [domainname].caddy dus setbaas.nl.caddy in dit geval
    - Het caddy docker network heet: caddy-net
    - **Volgorde in de site config is functioneel**: de SvelteKit-routes `/api/nevobo`, `/api/ai`,
-     `/api/invite` en `/api/backups` moeten vóór de PocketBase catch-all `/api/*` staan. Anders
+     `/api/invite`, `/api/backups` en `/api/notify` moeten vóór de PocketBase catch-all `/api/*` staan. Anders
      beantwoordt PocketBase ze met een 404 en lijkt het in de app alsof er geen data is.
 
 ## Snelle deploy via script

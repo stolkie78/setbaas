@@ -2,7 +2,7 @@
 # No HTTPS — Caddy serves HTTP only on port 80
 #
 # LET OP: de SvelteKit-routes onder /api/* moeten vóór de PocketBase catch-all
-# staan, anders gaan /api/nevobo, /api/ai, /api/invite en /api/backups naar
+# staan, anders gaan /api/nevobo, /api/ai, /api/invite, /api/backups en /api/notify naar
 # PocketBase en krijgt de app een 404 terug.
 
 http://setbaas.local {
@@ -17,6 +17,9 @@ http://setbaas.local {
 		reverse_proxy frontend:3000
 	}
 	handle /api/backups* {
+		reverse_proxy frontend:3000
+	}
+	handle /api/notify* {
 		reverse_proxy frontend:3000
 	}
 

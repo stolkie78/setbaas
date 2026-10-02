@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pb, getAttendanceForPlayer, setPlayerAttendance, getPendingQuestionnaires, updatePlayerExtraActivities } from '$lib/pocketbase';
+	import { pb, getAttendanceForPlayer, setPlayerAttendance, notifyAttendanceChange, getPendingQuestionnaires, updatePlayerExtraActivities } from '$lib/pocketbase';
 	import { linkedPlayer, rolesLoaded } from '$lib/stores/role';
 	import { selectedTeamId, selectedSeasonId, contextFilter } from '$lib/stores/context';
 	import type { Training, Match, TrainingAttendance, MatchAttendance, AttendanceStatus, Questionnaire, MatchPlayerStats, PlayerPosition, ExtraActivity } from '$lib/types';
@@ -7,6 +7,7 @@
 	import { getMatchScore, getMatchOutcome } from '$lib/utils/match';
 	import { marked } from 'marked';
 	import { base } from '$app/paths';
+	import { onDestroy, onMount } from 'svelte';
 	import AttendanceStatusSwitcher from '$lib/components/AttendanceStatusSwitcher.svelte';
 	import LoadReport from '$lib/components/LoadReport.svelte';
 	import { fetchPlayerLoad, type PlayerLoad } from '$lib/utils/load';
@@ -254,6 +255,36 @@
 		return records.find(a => a.match === matchId)?.reason || '';
 	}
 
+	// The status switcher cycles one status per tap, so wait until the player
+	// stops tapping and only report the final status. The server decides
+	// whether that is worth a message to the trainers.
+	const NOTIFY_DELAY_MS = 4000;
+	const pendingNotifies = new Map<string, { timer: ReturnType<typeof setTimeout>; send: () => void }>();
+
+	function scheduleNotify(type: 'training' | 'match', id: string, currentPlayerId: string) {
+		const key = `${type}-${id}`;
+		const pending = pendingNotifies.get(key);
+		if (pending) clearTimeout(pending.timer);
+		const send = () => {
+			pendingNotifies.delete(key);
+			notifyAttendanceChange(type, id, currentPlayerId);
+		};
+		pendingNotifies.set(key, { timer: setTimeout(send, NOTIFY_DELAY_MS), send });
+	}
+
+	function flushNotifies() {
+		for (const pending of [...pendingNotifies.values()]) {
+			clearTimeout(pending.timer);
+			pending.send();
+		}
+	}
+
+	onMount(() => {
+		window.addEventListener('pagehide', flushNotifies);
+		return () => window.removeEventListener('pagehide', flushNotifies);
+	});
+	onDestroy(flushNotifies);
+
 	async function submitStatus(type: 'training' | 'match', id: string, status: AttendanceStatus, reason?: string) {
 		if (!playerId) return;
 		const key = `${type}-${id}`;
@@ -264,6 +295,7 @@
 			if (type === 'training') data.training = id;
 			else data.match = id;
 			const result = await setPlayerAttendance(data);
+			scheduleNotify(type, id, playerId);
 			if (type === 'training') {
 				const idx = trainingAttendance.findIndex(a => a.training === id);
 				if (idx >= 0) trainingAttendance[idx] = result as TrainingAttendance;

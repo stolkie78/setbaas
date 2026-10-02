@@ -6,7 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { getClubs, getTeams, getSeasons, getClubAccessForUser, grantClubAccess } from '$lib/pocketbase';
-	import { pb } from '$lib/pocketbase';
+	import { pb, unreadMessageCount, refreshUnreadMessageCount } from '$lib/pocketbase';
 	import {
 		selectedClubId,
 		selectedTeamId,
@@ -47,6 +47,15 @@
 	let localSeasons: Season[] = [];
 	let authReady = false;
 
+	function isPublicPath(path: string) {
+		return path === '/login' || path === '/auth-debug' || path.startsWith('/invite') || path.startsWith('/reset-password');
+	}
+
+	// Pages without the app chrome (and without an auth requirement).
+	$: isBarePage = $page.url.pathname === '/login' || $page.url.pathname.startsWith('/reset-password');
+
+	$: inboxLabel = $unreadMessageCount > 0 ? `📬 Inbox (${$unreadMessageCount})` : '📬 Inbox';
+
 	onMount(async () => {
 		const saved = localStorage.getItem('darkMode');
 		darkMode = saved !== null ? saved === 'true' : true;
@@ -55,8 +64,7 @@
 		// Mark auth as ready - pb.authStore is already loaded from localStorage at this point
 		authReady = true;
 
-		const isPublicPath = $page.url.pathname === '/login' || $page.url.pathname === '/auth-debug' || $page.url.pathname.startsWith('/invite');
-		if (AUTH_ENABLED && !pb.authStore.isValid && !isPublicPath) {
+		if (AUTH_ENABLED && !pb.authStore.isValid && !isPublicPath($page.url.pathname)) {
 			goto(`${base}/login`);
 			return;
 		}
@@ -128,13 +136,15 @@
 		}
 	});
 
-	$: if (browser && authReady && AUTH_ENABLED && !$isAuthenticated && $page.url.pathname !== '/login' && $page.url.pathname !== '/auth-debug' && !$page.url.pathname.startsWith('/invite')) {
+	$: if (browser && authReady && AUTH_ENABLED && !$isAuthenticated && !isPublicPath($page.url.pathname)) {
 		goto(`${base}/login`);
 	}
 
-	// Close menu on navigation
+	// Close menu on navigation and refresh the unread badge, so reading a
+	// message in the inbox is reflected as soon as the user moves on.
 	$: if ($page.url.pathname) {
 		menuOpen = false;
+		if (browser && authReady && $isAuthenticated) refreshUnreadMessageCount();
 	}
 
 	function handleLogout() {
@@ -187,7 +197,7 @@
 
 	$: playerNavItems = [
 		{ href: '/', label: '🏐 Mijn dashboard' },
-		{ href: '/inbox', label: '📬 Inbox' },
+		{ href: '/inbox', label: inboxLabel },
 		{ href: '/profile', label: '👤 Mijn profiel' },
 	];
 
@@ -195,7 +205,7 @@
 		...($currentRole === 'player'
 			? playerNavItems
 			: $currentRole === 'parent'
-				? [{ href: '/', label: '👨‍👩‍👦 Mijn dashboard' }]
+				? [{ href: '/', label: '👨‍👩‍👦 Mijn dashboard' }, { href: '/inbox', label: inboxLabel }]
 				: [
 						...coachNavItems.filter(
 							(item) => !$permission || item.permissions.includes($permission)
@@ -203,7 +213,7 @@
 						// A coach who also plays keeps a shortcut to their own player view
 						// without having to switch roles.
 						...($isPlayer ? [{ href: '/me', label: '🏐 Mijn training' }] : []),
-						...($isPlayer ? [{ href: '/inbox', label: '📬 Inbox' }] : []),
+						{ href: '/inbox', label: inboxLabel },
 					]),
 		...($isPlatformAdmin ? [{ href: '/platform-admin', label: 'Clubs beheren' }] : []),
 	];
@@ -223,11 +233,11 @@
 </svelte:head>
 
 <div class="min-h-screen">
-	{#if !$isAuthenticated && $page.url.pathname !== '/login'}
+	{#if !$isAuthenticated && !isBarePage}
 		<div class="flex justify-center items-center min-h-screen">
 			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
 		</div>
-	{:else if $page.url.pathname === '/login'}
+	{:else if isBarePage}
 		<main class="px-4 py-6 max-w-lg md:max-w-xl mx-auto">
 			<slot />
 		</main>
@@ -277,15 +287,20 @@
 							</svg>
 						</button>
 					{/if}
+					<a href="{base}/inbox"
+						class="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+						aria-label={$unreadMessageCount > 0 ? `Inbox, ${$unreadMessageCount} ongelezen` : 'Inbox'}
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+						</svg>
+						{#if $unreadMessageCount > 0}
+							<span class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold leading-[1.1rem] text-center">
+								{$unreadMessageCount > 9 ? '9+' : $unreadMessageCount}
+							</span>
+						{/if}
+					</a>
 					{#if $currentRole === 'player'}
-						<a href="{base}/inbox"
-							class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
-							aria-label="Inbox"
-						>
-							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-							</svg>
-						</a>
 						<a href="{base}/profile"
 							class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
 							aria-label="Mijn profiel"
@@ -310,9 +325,12 @@
 				<!-- Hamburger -->
 				<button
 					on:click={() => (menuOpen = !menuOpen)}
-					class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
-					aria-label="Menu"
+					class="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+					aria-label={$unreadMessageCount > 0 ? `Menu, ${$unreadMessageCount} ongelezen berichten` : 'Menu'}
 				>
+					{#if $unreadMessageCount > 0 && !menuOpen}
+						<span class="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-600"></span>
+					{/if}
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						{#if menuOpen}
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

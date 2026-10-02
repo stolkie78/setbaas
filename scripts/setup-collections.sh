@@ -73,6 +73,19 @@ else
   echo "  ✅ is_platform_admin field exists"
 fi
 
+# Opt-out for the e-mail copy of inbox messages. A bool defaults to false, so
+# every user receives e-mail unless they switch it off on their profile page.
+echo "→ Ensuring mail_opt_out field on users collection..."
+USER_FIELDS_NOW=$(curl -sf "$PB_URL/api/collections/users" -H "Authorization: $TOKEN" | jq -c '.fields')
+if [ "$(echo "$USER_FIELDS_NOW" | jq 'any(.name == "mail_opt_out")')" != "true" ]; then
+  curl -sf -X PATCH "$PB_URL/api/collections/users" \
+    -H "Authorization: $TOKEN" -H "Content-Type: application/json" \
+    -d "$(echo "$USER_FIELDS_NOW" | jq -c '{fields: (. + [{"name":"mail_opt_out","type":"bool","required":false}])}')" > /dev/null \
+    && echo "  ✅ mail_opt_out field added" || echo "  ⚠️ Could not add mail_opt_out field"
+else
+  echo "  ✅ mail_opt_out field exists"
+fi
+
 # Helper: create or update a collection
 # Usage: ensure_collection '{"name":"...", "type":"...", "fields":[...], ...}'
 ensure_collection() {
@@ -501,6 +514,45 @@ ensure_collection "{
   \"deleteRule\": \"@request.auth.id != \\\"\\\"\"
 }"
 
+# === 10e. Messages (built-in mailbox) ===
+# Every message lands in the recipient's inbox and is mailed to them as well
+# (unless users.mail_opt_out). Only the server creates messages (createRule
+# null = superuser only, via /api/notify); a recipient can only see, mark as
+# read or delete their own.
+# `ref` + `ref_status` remember what was last reported for an attendance record
+# so toggling a status back and forth does not flood the trainers.
+MESSAGES_DEF=$(jq -n \
+  --arg clubs "$CLUBS_ID" --arg teams "$TEAMS_ID" --arg players "$PLAYERS_ID" \
+  --arg trainings "$TRAININGS_ID" --arg matches "$MATCHES_ID" '{
+  name: "messages",
+  type: "base",
+  fields: [
+    {name: "recipient", type: "relation", required: true, collectionId: "_pb_users_auth_", maxSelect: 1, cascadeDelete: true},
+    {name: "sender", type: "relation", required: false, collectionId: "_pb_users_auth_", maxSelect: 1},
+    {name: "kind", type: "select", required: true, values: ["absence","attendance_restored","system"], maxSelect: 1},
+    {name: "subject", type: "text", required: true, max: 300},
+    {name: "body", type: "text", required: false, max: 5000},
+    {name: "link", type: "text", required: false, max: 500},
+    {name: "read", type: "bool", required: false},
+    {name: "emailed", type: "bool", required: false},
+    {name: "club", type: "relation", required: false, collectionId: $clubs, maxSelect: 1},
+    {name: "team", type: "relation", required: false, collectionId: $teams, maxSelect: 1},
+    {name: "player", type: "relation", required: false, collectionId: $players, maxSelect: 1},
+    {name: "training", type: "relation", required: false, collectionId: $trainings, maxSelect: 1},
+    {name: "match", type: "relation", required: false, collectionId: $matches, maxSelect: 1},
+    {name: "ref", type: "text", required: false, max: 100},
+    {name: "ref_status", type: "text", required: false, max: 30},
+    {name: "created", type: "autodate", onCreate: true, onUpdate: false},
+    {name: "updated", type: "autodate", onCreate: true, onUpdate: true}
+  ],
+  listRule: "recipient = @request.auth.id",
+  viewRule: "recipient = @request.auth.id",
+  createRule: null,
+  updateRule: "recipient = @request.auth.id && @request.body.recipient:isset = false",
+  deleteRule: "recipient = @request.auth.id"
+}')
+ensure_collection "$MESSAGES_DEF"
+
 # === 11. Team Access ===
 ensure_collection "{
   \"name\": \"team_access\",
@@ -667,6 +719,54 @@ EOJSON
 else
   echo "  ⚠ Skipped (set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars)"
 fi
+
+echo ""
+echo "✉️  Configuring e-mail (SMTP, login codes, password reset)..."
+
+# PocketBase sends the login codes (OTP) and password reset mails itself, so it
+# needs the same SMTP account as the frontend (which sends invitations and
+# inbox notifications).
+SMTP_HOST="${SMTP_HOST:-}"
+SMTP_PORT="${SMTP_PORT:-587}"
+SMTP_USER="${SMTP_USER:-}"
+SMTP_PASS="${SMTP_PASS:-}"
+SMTP_FROM="${SMTP_FROM:-info@setbaas.nl}"
+
+if [ -n "$SMTP_HOST" ] && [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
+  # Port 465 = implicit TLS; anything else (587) upgrades with STARTTLS.
+  SMTP_TLS=false
+  [ "$SMTP_PORT" = "465" ] && SMTP_TLS=true
+  SMTP_BODY=$(jq -n --arg host "$SMTP_HOST" --argjson port "$SMTP_PORT" --arg user "$SMTP_USER" \
+    --arg pass "$SMTP_PASS" --arg from "$SMTP_FROM" --argjson tls "$SMTP_TLS" '{
+      meta: {appName: "SetBaas", senderName: "SetBaas", senderAddress: $from},
+      smtp: {enabled: true, host: $host, port: $port, username: $user, password: $pass, authMethod: "PLAIN", tls: $tls}
+    }')
+  curl -sf "$PB_URL/api/settings" -X PATCH \
+    -H "Authorization: $TOKEN" -H "Content-Type: application/json" \
+    -d "$SMTP_BODY" > /dev/null \
+    && echo "  ✓ SMTP $SMTP_HOST:$SMTP_PORT (afzender $SMTP_FROM)" \
+    || echo "  ⚠️ Could not configure SMTP"
+else
+  echo "  ⚠ SMTP skipped (set SMTP_HOST, SMTP_USER and SMTP_PASS) — login codes and password resets cannot be mailed"
+fi
+
+# Dutch templates. {APP_URL} is SITE_URL (see above), so the reset link opens
+# the SetBaas reset page instead of the PocketBase admin UI.
+MAIL_STYLE='font-family: sans-serif; max-width: 600px; margin: 0 auto;'
+OTP_BODY="<div style=\"$MAIL_STYLE\"><h2 style=\"color: #2563eb;\">🏐 Je inlogcode voor SetBaas</h2><p>Gebruik deze code om in te loggen:</p><p style=\"font-size: 28px; font-weight: bold; letter-spacing: 6px;\">{OTP}</p><p>De code is 10 minuten geldig.</p><p style=\"color: #666; font-size: 12px;\">Heb je geen code aangevraagd? Dan kun je deze e-mail negeren.</p></div>"
+RESET_BODY="<div style=\"$MAIL_STYLE\"><h2 style=\"color: #2563eb;\">🏐 Wachtwoord opnieuw instellen</h2><p>Klik op de knop hieronder om een nieuw wachtwoord voor SetBaas te kiezen.</p><a href=\"{APP_URL}/reset-password/{TOKEN}\" style=\"display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;\">Nieuw wachtwoord instellen</a><p style=\"color: #666; font-size: 12px;\">Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren; je wachtwoord blijft ongewijzigd.<br>Of kopieer deze link: {APP_URL}/reset-password/{TOKEN}</p></div>"
+# authAlert: PocketBase mails an (English) "new login" alert per new device/IP
+# by default; on phones that hop between networks that is mostly noise.
+AUTH_MAIL_BODY=$(jq -n --arg otp "$OTP_BODY" --arg reset "$RESET_BODY" '{
+  otp: {enabled: true, duration: 600, length: 6, emailTemplate: {subject: "Je inlogcode voor SetBaas: {OTP}", body: $otp}},
+  resetPasswordTemplate: {subject: "Wachtwoord opnieuw instellen voor SetBaas", body: $reset},
+  authAlert: {enabled: false}
+}')
+curl -sf "$PB_URL/api/collections/users" -X PATCH \
+  -H "Authorization: $TOKEN" -H "Content-Type: application/json" \
+  -d "$AUTH_MAIL_BODY" > /dev/null \
+  && echo "  ✓ Inloggen met e-mailcode + wachtwoord-reset ingeschakeld" \
+  || echo "  ⚠️ Could not configure login codes / reset template"
 
 echo ""
 echo "🏛  Seeding clubs..."

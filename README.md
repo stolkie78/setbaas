@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.5.4
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.6.0
 
 ## Tech Stack
 
@@ -57,6 +57,9 @@ Een Progressive Web App voor het beheren van je volleybalteam: spelers, training
 
 ### 🔐 Gebruikers & Rollen
 - **Google OAuth + email/password** login
+- **Inloggen zonder wachtwoord** — Inlogcode per e-mail, voor wie geen Google-account gebruikt
+- **Wachtwoord vergeten** — Resetlink per e-mail
+- **Inbox** — Ingebouwde mailbox voor alle rollen; trainers krijgen een bericht (en mail) als een speler zich afmeldt
 - **Clubs** — Club → team → seizoen structuur, teams gekoppeld aan een club
 - **Multi-team** — Meerdere teams binnen één installatie, teamkeuze gefilterd op club
 - **Rollen** — Admin (alles), Coach (team beheer), Speler (eigen dashboard)
@@ -259,21 +262,33 @@ rm -rf /tmp/restore
 
 ---
 
-## Email Uitnodigingen (SMTP)
+## E-mail (SMTP)
 
-Om uitnodigingen per email te versturen, configureer SMTP in `.env`:
+SetBaas mailt via één SMTP-account. Configureer het in `.env` / `.env.production`:
 
 ```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=jouw@gmail.com
-SMTP_PASS=<app-password>
-SMTP_FROM=noreply@setbaas.nl
+SMTP_HOST=mail.setbaas.nl
+SMTP_PORT=587            # 587 = STARTTLS, 465 = TLS
+SMTP_USER=info@setbaas.nl
+SMTP_PASS=<wachtwoord>
+SMTP_FROM=info@setbaas.nl
+SITE_URL=https://setbaas.nl
 ```
 
-> **Tip:** Gebruik een [Google App Password](https://myaccount.google.com/apppasswords) voor Gmail.
+Daarmee werkt:
 
-Zonder SMTP worden uitnodigingen aangemaakt met een deelbare link die je handmatig kunt kopiëren.
+| Mail | Verstuurd door | Wanneer |
+|------|----------------|---------|
+| Uitnodiging | Frontend (`/api/invite`) | Beheerder nodigt iemand uit |
+| Inlogcode | PocketBase (OTP) | *Inloggen met e-mail* → *Stuur mij een inlogcode*, of een uitnodiging accepteren zonder wachtwoord |
+| Wachtwoord vergeten | PocketBase | Link naar `SITE_URL/reset-password/<token>` |
+| Inboxbericht | Frontend (`/api/notify`) | Een speler meldt zich af voor een training of wedstrijd (of meldt zich weer aan) |
+
+Inlogcodes en resetmails verstuurt PocketBase zelf. De setup (`pb-setup`, of `./scripts/deploy.sh prod --setup`) zet daarom de SMTP-instellingen, de afzender en de Nederlandse mailteksten in PocketBase. Draai de setup opnieuw na het wijzigen van de SMTP-gegevens.
+
+**Inbox en afmeldingen** — Wijzigt een speler zijn status voor een training of wedstrijd naar iets anders dan *Aanwezig*, dan krijgen de trainer(s) van die training of de coach(es) van die wedstrijd een bericht in hun inbox. Zijn daar geen trainers ingevuld, dan gaat het naar de trainers van het team. Elk bericht wordt ook gemaild, tenzij de ontvanger in de inbox *Stuur nieuwe berichten ook naar mijn e-mail* uitzet. Snel achter elkaar wisselen van status levert één bericht op, en er wordt niet gemeld voor events die al voorbij zijn.
+
+Zonder SMTP worden uitnodigingen aangemaakt met een deelbare link die je handmatig kunt kopiëren. Inboxberichten worden dan alleen in de app getoond.
 
 ---
 
@@ -311,11 +326,11 @@ De AI gebruikt automatisch:
 | `SETBAAS_ADMIN_PASSWORD` | Wachtwoord voor bovenstaand account | (secret) |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID | `*.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | (secret) |
-| `SMTP_HOST` | SMTP server | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP poort | `587` |
-| `SMTP_USER` | SMTP gebruiker | `jouw@gmail.com` |
+| `SMTP_HOST` | SMTP server | `mail.setbaas.nl` |
+| `SMTP_PORT` | SMTP poort (587 STARTTLS, 465 TLS) | `587` |
+| `SMTP_USER` | SMTP gebruiker | `info@setbaas.nl` |
 | `SMTP_PASS` | SMTP wachtwoord | (secret) |
-| `SMTP_FROM` | Afzender email | `noreply@setbaas.nl` |
+| `SMTP_FROM` | Afzender email | `info@setbaas.nl` |
 
 ---
 
@@ -329,6 +344,7 @@ De AI gebruikt automatisch:
 │  /api/nevobo  → Frontend (:3000)           │
 │  /api/ai      → Frontend (:3000)           │
 │  /api/invite  → Frontend (:3000)           │
+│  /api/notify  → Frontend (:3000)           │
 │  /api/*       → PocketBase (:8090)         │
 │  /_/*         → PocketBase (:8090)         │
 │  /*           → Frontend (:3000)           │
@@ -390,6 +406,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.6.0** | 2026-10-03 | E-mail via de eigen mailserver (`mail.setbaas.nl`, afzender `info@setbaas.nl`). Inloggen zonder wachtwoord met een inlogcode per e-mail, ook bij het accepteren van een uitnodiging. *Wachtwoord vergeten?* met een resetlink. Een ingebouwde inbox voor alle rollen met een teller voor ongelezen berichten: trainers en coaches krijgen een bericht als een speler zich afmeldt voor een training of wedstrijd (of weer aanmeldt), en dat bericht wordt ook gemaild (uit te zetten in de inbox). Herstelt ook het accepteren van uitnodigingen, dat de gebruikers-ID niet meestuurde. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) zodat PocketBase de SMTP-instellingen en de `messages`-collectie krijgt. |
 | **v4.5.5** | 2026-10-02 | Nieuw ouderdashboard voor ouderaccounts met beheerder-beheerde koppelingen aan meerdere spelers. Ouders zien per gekoppelde speler het profiel, komende trainingen en wedstrijden, de eigen aanwezigheidsstatus en recente uitslagen. Aanwezigheidspercentages voor afgeronde trainingen en gespeelde wedstrijden tonen ook de bijgewoonde aantallen. Persoonlijke vragenlijstgegevens, competentiescores, coachnotities en gegevens van andere spelers blijven buiten het ouderdashboard. |
 | **v4.5.4** | 2026-10-02 | Kleine opfrisbeurt van de tijdlijn op het dashboard: het label **Training** of **Wedstrijd** staat nu op een eigen regel bóven de titel, zodat de naam van de tegenstander of de trainingsdag beter leesbaar is. De links **Alle trainingen** en **Alle wedstrijden** staan nu gecentreerd. Daarnaast is vastgelegd dat lokaal bekijken altijd via `./scripts/deploy.sh test` gaat (app op poort 3000, PocketBase op 8090) in plaats van een losse dev-server. |
 | **v4.5.3** | 2026-10-01 | Herstelt de reverse proxy: Caddy stuurde `/api/*` volledig naar PocketBase, waardoor de SvelteKit-routes `/api/nevobo`, `/api/ai`, `/api/invite` en `/api/backups` een 404 teruggaven. In de app zag je dat als *"Geen wedstrijden gevonden voor dit team"* terwijl de Nevobo URL gewoon klopte. De site configs staan nu als drop-in in `caddy/conf.d/` met de SvelteKit-routes vóór de PocketBase catch-all, en `./scripts/deploy.sh <demo\|prod>` installeert, valideert en herlaadt ze automatisch (met terugrol bij een ongeldige config). Mislukt de Nevobo-proxy, dan toont het importscherm voortaan de echte foutmelding in plaats van een lege lijst. |

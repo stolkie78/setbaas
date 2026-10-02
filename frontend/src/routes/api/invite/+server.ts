@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { env as pubEnv } from '$env/dynamic/public';
-import nodemailer from 'nodemailer';
+import { isMailConfigured, sendMail } from '$lib/server/mailer';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const { email, club, clubName, role, invitedBy, siteUrl } = await request.json();
@@ -90,13 +90,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	// Send email
-	const smtpHost = env.SMTP_HOST;
-	const smtpPort = env.SMTP_PORT || '587';
-	const smtpUser = env.SMTP_USER;
-	const smtpPass = env.SMTP_PASS;
-	const smtpFrom = env.SMTP_FROM || 'noreply@setbaas.nl';
-
-	if (!smtpHost || !smtpUser || !smtpPass) {
+	if (!isMailConfigured()) {
 		// No SMTP configured — return success with the link so admin can share manually
 		const inviteLink = `${siteUrl || 'http://localhost:3000'}/invite/${token}`;
 		return new Response(JSON.stringify({
@@ -110,18 +104,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		const transporter = nodemailer.createTransport({
-			host: smtpHost,
-			port: parseInt(smtpPort),
-			secure: parseInt(smtpPort) === 465,
-			auth: { user: smtpUser, pass: smtpPass }
-		});
-
 		const inviteLink = `${siteUrl || 'http://localhost:3000'}/invite/${token}`;
 		const roleLabel = role === 'admin' ? 'Admin' : role === 'user' ? 'Gebruiker' : 'Lezer';
 
-		await transporter.sendMail({
-			from: `"SetBaas" <${smtpFrom}>`,
+		await sendMail({
 			to: email,
 			subject: `Uitnodiging voor ${clubName || 'een club'} op SetBaas`,
 			html: `

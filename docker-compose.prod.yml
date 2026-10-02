@@ -34,7 +34,7 @@ services:
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_FROM=${SMTP_FROM:-noreply@setbaas.nl}
+      - SMTP_FROM=${SMTP_FROM:-info@setbaas.nl}
     depends_on:
       pocketbase:
         condition: service_healthy

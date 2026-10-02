@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { authUser } from '$lib/stores/auth';
-	import { pb } from '$lib/pocketbase';
+	import { pb, requestLoginCode, loginWithCode, requestPasswordReset } from '$lib/pocketbase';
 	import { tick } from 'svelte';
 
 	let loading = false;
@@ -12,6 +12,78 @@
 	let email = '';
 	let password = '';
 	let showEmailLogin = false;
+
+	// 'code' = passwordless login with a code sent by e-mail,
+	// 'password' = classic e-mail & password, 'reset' = forgot password.
+	type Mode = 'code' | 'password' | 'reset';
+	let mode: Mode = 'code';
+	let otpId = '';
+	let code = '';
+	let info = '';
+
+	function switchMode(next: Mode) {
+		mode = next;
+		error = '';
+		info = '';
+		otpId = '';
+		code = '';
+	}
+
+	async function finishLogin() {
+		const model = (pb.authStore as any).record || (pb.authStore as any).model;
+		authUser.set(model as any);
+		await tick();
+		window.location.href = base + '/';
+	}
+
+	async function sendCode() {
+		if (!email.trim()) return;
+		loading = true;
+		error = '';
+		info = '';
+		try {
+			otpId = await requestLoginCode(email.trim());
+			code = '';
+			info = `Als ${email.trim()} bij ons bekend is, ontvang je binnen een minuut een inlogcode.`;
+		} catch (e: any) {
+			console.error('Requesting login code failed:', e);
+			error = 'Versturen van de code is mislukt. Probeer het later opnieuw.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function loginWithEmailCode() {
+		const cleaned = code.replace(/\s/g, '');
+		if (!otpId || !cleaned) return;
+		loading = true;
+		error = '';
+		try {
+			await loginWithCode(otpId, cleaned);
+			await finishLogin();
+		} catch (e: any) {
+			console.error('Code login failed:', e);
+			error = 'Code onjuist of verlopen. Vraag eventueel een nieuwe code aan.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function sendReset() {
+		if (!email.trim()) return;
+		loading = true;
+		error = '';
+		info = '';
+		try {
+			await requestPasswordReset(email.trim());
+			info = `Als ${email.trim()} bij ons bekend is, ontvang je een e-mail met een link om je wachtwoord opnieuw in te stellen.`;
+		} catch (e: any) {
+			console.error('Password reset request failed:', e);
+			error = 'Versturen is mislukt. Probeer het later opnieuw.';
+		} finally {
+			loading = false;
+		}
+	}
 
 	async function loginWithGoogle() {
 		loading = true;
@@ -34,10 +106,7 @@
 		error = '';
 		try {
 			await pb.collection('users').authWithPassword(email.trim(), password);
-			const model = (pb.authStore as any).record || (pb.authStore as any).model;
-			authUser.set(model as any);
-			await tick();
-			window.location.href = base + '/';
+			await finishLogin();
 		} catch (e: any) {
 			console.error('Email login failed:', e);
 			error = 'Onjuist e-mailadres of wachtwoord.';
@@ -102,26 +171,90 @@
 			<div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
 		</div>
 
-		<!-- Email/password login -->
+		<!-- E-mail login: code (passwordless), password, or password reset -->
 		{#if showEmailLogin}
-			<form class="space-y-3 text-left" on:submit|preventDefault={loginWithEmail}>
-				<div>
-					<label class="label" for="login-email">E-mail</label>
-					<input id="login-email" class="input" type="email" bind:value={email} required placeholder="je@email.nl" />
+			{#if info}
+				<div class="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-xl px-4 py-3 text-left">
+					{info}
 				</div>
-				<div>
-					<label class="label" for="login-pass">Wachtwoord</label>
-					<input id="login-pass" class="input" type="password" bind:value={password} required placeholder="••••••••" />
-				</div>
-				<button type="submit" class="btn-primary w-full py-3" disabled={loading}>
-					{loading ? 'Inloggen...' : 'Inloggen'}
+			{/if}
+
+			{#if mode === 'code'}
+				{#if !otpId}
+					<form class="space-y-3 text-left" on:submit|preventDefault={sendCode}>
+						<div>
+							<label class="label" for="login-email">E-mail</label>
+							<input id="login-email" class="input" type="email" bind:value={email} required placeholder="je@email.nl" autocomplete="email" />
+						</div>
+						<button type="submit" class="btn-primary w-full py-3" disabled={loading}>
+							{loading ? 'Versturen...' : 'Stuur mij een inlogcode'}
+						</button>
+					</form>
+				{:else}
+					<form class="space-y-3 text-left" on:submit|preventDefault={loginWithEmailCode}>
+						<div>
+							<label class="label" for="login-code">Inlogcode</label>
+							<input id="login-code" class="input text-center text-2xl tracking-[0.4em] font-mono" type="text"
+								inputmode="numeric" autocomplete="one-time-code" maxlength="8" bind:value={code} required placeholder="000000" />
+						</div>
+						<button type="submit" class="btn-primary w-full py-3" disabled={loading}>
+							{loading ? 'Inloggen...' : 'Inloggen'}
+						</button>
+						<button type="button" class="text-xs text-gray-500 dark:text-gray-400 hover:underline w-full text-center"
+							on:click={() => { otpId = ''; info = ''; }}>
+							Andere e-mail of nieuwe code
+						</button>
+					</form>
+				{/if}
+				<button on:click={() => switchMode('password')}
+					class="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+					Inloggen met wachtwoord
 				</button>
-			</form>
+			{:else if mode === 'password'}
+				<form class="space-y-3 text-left" on:submit|preventDefault={loginWithEmail}>
+					<div>
+						<label class="label" for="login-email">E-mail</label>
+						<input id="login-email" class="input" type="email" bind:value={email} required placeholder="je@email.nl" autocomplete="email" />
+					</div>
+					<div>
+						<label class="label" for="login-pass">Wachtwoord</label>
+						<input id="login-pass" class="input" type="password" bind:value={password} required placeholder="••••••••" autocomplete="current-password" />
+					</div>
+					<button type="submit" class="btn-primary w-full py-3" disabled={loading}>
+						{loading ? 'Inloggen...' : 'Inloggen'}
+					</button>
+				</form>
+				<div class="flex justify-between text-sm">
+					<button on:click={() => switchMode('code')} class="text-primary-600 dark:text-primary-400 hover:underline">
+						Inloggen met code
+					</button>
+					<button on:click={() => switchMode('reset')} class="text-primary-600 dark:text-primary-400 hover:underline">
+						Wachtwoord vergeten?
+					</button>
+				</div>
+			{:else}
+				<form class="space-y-3 text-left" on:submit|preventDefault={sendReset}>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						Vul je e-mailadres in. Je krijgt een link om een nieuw wachtwoord in te stellen.
+					</p>
+					<div>
+						<label class="label" for="login-email">E-mail</label>
+						<input id="login-email" class="input" type="email" bind:value={email} required placeholder="je@email.nl" autocomplete="email" />
+					</div>
+					<button type="submit" class="btn-primary w-full py-3" disabled={loading}>
+						{loading ? 'Versturen...' : 'Stuur resetlink'}
+					</button>
+				</form>
+				<button on:click={() => switchMode('password')}
+					class="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+					Terug naar inloggen
+				</button>
+			{/if}
 		{:else}
 			<button
 				on:click={() => (showEmailLogin = true)}
 				class="text-sm text-primary-600 dark:text-primary-400 hover:underline">
-				Inloggen met e-mail & wachtwoord
+				Inloggen met e-mail (zonder Google)
 			</button>
 		{/if}
 

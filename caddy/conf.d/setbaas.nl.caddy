@@ -11,12 +11,12 @@
 # Caddy kiest binnen een site het handle-blok met de meest specifieke matcher,
 # maar bij gelijke specificiteit telt de volgorde. De SvelteKit-routes staan
 # daarom expliciet vóór de PocketBase catch-all `/api/*`. Staan ze erachter,
-# dan beantwoordt PocketBase /api/nevobo, /api/ai, /api/invite en /api/backups
+# dan beantwoordt PocketBase /api/nevobo, /api/ai, /api/invite, /api/backups en /api/notify
 # met een 404 en lijkt het in de app alsof er geen data is.
 
 setbaas.nl {
 	# SvelteKit server routes — moeten vóór de PocketBase catch-all staan
-	@sveltekit path /api/nevobo* /api/ai* /api/invite* /api/backups*
+	@sveltekit path /api/nevobo* /api/ai* /api/invite* /api/backups* /api/notify*
 	handle @sveltekit {
 		reverse_proxy setbaas-frontend:3000
 	}
