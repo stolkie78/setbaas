@@ -936,17 +936,22 @@ export async function setMailOptOut(userId: string, optOut: boolean): Promise<vo
  * stored status itself and notifies the linked trainers on an absence. Never
  * throws: a failed notification must not break saving the attendance.
  */
-export async function notifyAttendanceChange(type: 'training' | 'match', eventId: string, playerId: string): Promise<void> {
+/** Returns how many trainers got a message, or null when the call failed. */
+export async function notifyAttendanceChange(type: 'training' | 'match', eventId: string, playerId: string): Promise<number | null> {
 	try {
-		await fetch(`${base}/api/notify/attendance`, {
+		const res = await fetch(`${base}/api/notify/attendance`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
 			body: JSON.stringify({ type, eventId, playerId }),
 			// Survives the page being closed right after changing a status.
 			keepalive: true,
 		});
+		if (!res.ok) return null;
+		const data = await res.json().catch(() => ({}));
+		return typeof data.notified === 'number' ? data.notified : 0;
 	} catch (e) {
 		console.error('Kon trainers niet informeren:', e);
+		return null;
 	}
 }
 

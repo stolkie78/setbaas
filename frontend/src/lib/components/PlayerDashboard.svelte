@@ -257,19 +257,59 @@
 
 	// The status switcher cycles one status per tap, so wait until the player
 	// stops tapping and only report the final status. The server decides
-	// whether that is worth a message to the trainers.
+	// whether that is worth a message to the trainers. A countdown shows the
+	// player when the change goes out; "Nu versturen" skips the wait.
 	const NOTIFY_DELAY_MS = 4000;
 	const pendingNotifies = new Map<string, { timer: ReturnType<typeof setTimeout>; send: () => void }>();
+
+	type NotifyState =
+		| { phase: 'counting'; deadline: number }
+		| { phase: 'sending' }
+		| { phase: 'done'; notified: number | null };
+	let notifyStates: Record<string, NotifyState> = {};
+	let now = Date.now();
+	let ticker: ReturnType<typeof setInterval> | null = null;
+	const doneTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+	function setNotifyState(key: string, state: NotifyState | null) {
+		const timer = doneTimers.get(key);
+		if (timer) { clearTimeout(timer); doneTimers.delete(key); }
+		if (state) notifyStates[key] = state;
+		else delete notifyStates[key];
+		notifyStates = notifyStates;
+
+		const counting = Object.values(notifyStates).some((st) => st.phase === 'counting');
+		if (counting && !ticker) {
+			now = Date.now();
+			ticker = setInterval(() => (now = Date.now()), 100);
+		} else if (!counting && ticker) {
+			clearInterval(ticker);
+			ticker = null;
+		}
+		if (state?.phase === 'done') {
+			doneTimers.set(key, setTimeout(() => setNotifyState(key, null), 4000));
+		}
+	}
 
 	function scheduleNotify(type: 'training' | 'match', id: string, currentPlayerId: string) {
 		const key = `${type}-${id}`;
 		const pending = pendingNotifies.get(key);
 		if (pending) clearTimeout(pending.timer);
-		const send = () => {
+		const send = async () => {
 			pendingNotifies.delete(key);
-			notifyAttendanceChange(type, id, currentPlayerId);
+			setNotifyState(key, { phase: 'sending' });
+			const notified = await notifyAttendanceChange(type, id, currentPlayerId);
+			if (!destroyed) setNotifyState(key, { phase: 'done', notified });
 		};
 		pendingNotifies.set(key, { timer: setTimeout(send, NOTIFY_DELAY_MS), send });
+		setNotifyState(key, { phase: 'counting', deadline: Date.now() + NOTIFY_DELAY_MS });
+	}
+
+	function sendNow(key: string) {
+		const pending = pendingNotifies.get(key);
+		if (!pending) return;
+		clearTimeout(pending.timer);
+		pending.send();
 	}
 
 	function flushNotifies() {
@@ -279,11 +319,17 @@
 		}
 	}
 
+	let destroyed = false;
 	onMount(() => {
 		window.addEventListener('pagehide', flushNotifies);
 		return () => window.removeEventListener('pagehide', flushNotifies);
 	});
-	onDestroy(flushNotifies);
+	onDestroy(() => {
+		flushNotifies();
+		destroyed = true;
+		if (ticker) clearInterval(ticker);
+		for (const t of doneTimers.values()) clearTimeout(t);
+	});
 
 	async function submitStatus(type: 'training' | 'match', id: string, status: AttendanceStatus, reason?: string) {
 		if (!playerId) return;
@@ -442,6 +488,29 @@
 									{/if}
 								</svelte:fragment>
 							</AttendanceStatusSwitcher>
+							{#if notifyStates[key]}
+								{@const ns = notifyStates[key]}
+								<div class="mt-2 text-xs" aria-live="polite">
+									{#if ns.phase === 'counting'}
+										{@const left = Math.max(0, ns.deadline - now)}
+										<div class="flex items-center justify-between gap-2 text-gray-500 dark:text-gray-400">
+											<span>Doorgeven aan je trainer over <span class="font-semibold tabular-nums text-gray-700 dark:text-gray-200">{Math.ceil(left / 1000)} s</span></span>
+											<button class="font-medium text-primary-600 hover:text-primary-800 dark:hover:text-primary-400" on:click={() => sendNow(key)}>Nu versturen</button>
+										</div>
+										<div class="mt-1 h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+											<div class="h-full rounded-full bg-primary-500" style="width: {(left / NOTIFY_DELAY_MS) * 100}%"></div>
+										</div>
+									{:else if ns.phase === 'sending'}
+										<span class="text-gray-500 dark:text-gray-400">Versturen…</span>
+									{:else if ns.notified === null}
+										<span class="text-red-600 dark:text-red-400">Opgeslagen, maar je trainer kon niet worden ingelicht.</span>
+									{:else if ns.notified > 0}
+										<span class="text-green-600 dark:text-green-400">✓ Doorgegeven aan je trainer</span>
+									{:else}
+										<span class="text-green-600 dark:text-green-400">✓ Opgeslagen</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -477,6 +546,29 @@
 								on:change={(e) => submitStatus('match', match.id, e.detail)}
 								on:reason={(e) => submitStatus('match', match.id, current, e.detail)}
 							/>
+							{#if notifyStates[key]}
+								{@const ns = notifyStates[key]}
+								<div class="mt-2 text-xs" aria-live="polite">
+									{#if ns.phase === 'counting'}
+										{@const left = Math.max(0, ns.deadline - now)}
+										<div class="flex items-center justify-between gap-2 text-gray-500 dark:text-gray-400">
+											<span>Doorgeven aan je trainer over <span class="font-semibold tabular-nums text-gray-700 dark:text-gray-200">{Math.ceil(left / 1000)} s</span></span>
+											<button class="font-medium text-primary-600 hover:text-primary-800 dark:hover:text-primary-400" on:click={() => sendNow(key)}>Nu versturen</button>
+										</div>
+										<div class="mt-1 h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+											<div class="h-full rounded-full bg-primary-500" style="width: {(left / NOTIFY_DELAY_MS) * 100}%"></div>
+										</div>
+									{:else if ns.phase === 'sending'}
+										<span class="text-gray-500 dark:text-gray-400">Versturen…</span>
+									{:else if ns.notified === null}
+										<span class="text-red-600 dark:text-red-400">Opgeslagen, maar je trainer kon niet worden ingelicht.</span>
+									{:else if ns.notified > 0}
+										<span class="text-green-600 dark:text-green-400">✓ Doorgegeven aan je trainer</span>
+									{:else}
+										<span class="text-green-600 dark:text-green-400">✓ Opgeslagen</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
