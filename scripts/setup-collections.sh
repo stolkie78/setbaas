@@ -554,6 +554,27 @@ MESSAGES_DEF=$(jq -n \
 }')
 ensure_collection "$MESSAGES_DEF"
 
+# === 10f. Attendance notices ===
+# The last attendance status reported to the trainers per player/event (ref =
+# "<type>:<eventId>:<playerId>"). Kept apart from messages so a trainer
+# deleting a message does not stop the "weer aanwezig" message. Server only.
+ensure_collection '{
+  "name": "attendance_notices",
+  "type": "base",
+  "fields": [
+    {"name": "ref", "type": "text", "required": true, "max": 100},
+    {"name": "status", "type": "text", "required": true, "max": 30},
+    {"name": "created", "type": "autodate", "onCreate": true, "onUpdate": false},
+    {"name": "updated", "type": "autodate", "onCreate": true, "onUpdate": true}
+  ],
+  "indexes": ["CREATE UNIQUE INDEX idx_attendance_notices_ref ON attendance_notices (ref)"],
+  "listRule": null,
+  "viewRule": null,
+  "createRule": null,
+  "updateRule": null,
+  "deleteRule": null
+}'
+
 # === 11. Team Access ===
 ensure_collection "{
   \"name\": \"team_access\",

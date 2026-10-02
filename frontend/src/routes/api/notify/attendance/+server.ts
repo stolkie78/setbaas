@@ -124,12 +124,17 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const reason: string = (attendance?.reason || '').trim();
 
 	const ref = `${type}:${eventId}:${playerId}`;
-	const last = await adminGet(adminToken, 'messages/records', {
-		filter: `ref = "${ref}"`,
-		sort: '-created',
-		perPage: '1'
-	});
-	const lastStatus: string | undefined = last?.items?.[0]?.ref_status;
+	const notice = (await listAll(adminToken, 'attendance_notices', `ref = "${ref}"`))[0];
+	let lastStatus: string | undefined = notice?.status;
+	if (!lastStatus) {
+		// Reports from before attendance_notices existed are only in messages.
+		const last = await adminGet(adminToken, 'messages/records', {
+			filter: `ref = "${ref}"`,
+			sort: '-created',
+			perPage: '1'
+		});
+		lastStatus = last?.items?.[0]?.ref_status;
+	}
 
 	let kind: 'absence' | 'attendance_restored';
 	if (status !== 'present') {
@@ -183,6 +188,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		ref,
 		ref_status: status
 	});
+
+	if (result.delivered > 0) {
+		await fetch(`${pbUrl()}/api/collections/attendance_notices/records${notice ? `/${notice.id}` : ''}`, {
+			method: notice ? 'PATCH' : 'POST',
+			headers: { 'Content-Type': 'application/json', Authorization: adminToken },
+			body: JSON.stringify({ ref, status })
+		}).catch((e) => console.error('Kon meldingsstatus niet opslaan:', e));
+	}
 
 	return json({ notified: result.delivered, emailed: result.emailed });
 };
