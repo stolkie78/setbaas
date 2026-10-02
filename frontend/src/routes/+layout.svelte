@@ -34,7 +34,6 @@
 		PERMISSION_LABELS,
 	} from '$lib/stores/role';
 	import RoleSelectDialog from '$lib/components/RoleSelectDialog.svelte';
-	import { ClipboardList, User, Users } from 'lucide-svelte';
 	import type { Club, Team, Season } from '$lib/types';
 	import { version } from '../../package.json';
 
@@ -54,7 +53,7 @@
 	// Pages without the app chrome (and without an auth requirement).
 	$: isBarePage = $page.url.pathname === '/login' || $page.url.pathname.startsWith('/reset-password');
 
-	$: inboxLabel = $unreadMessageCount > 0 ? `📬 Inbox (${$unreadMessageCount})` : '📬 Inbox';
+	$: inboxLabel = $unreadMessageCount > 0 ? `Inbox (${$unreadMessageCount})` : 'Inbox';
 
 	onMount(async () => {
 		const saved = localStorage.getItem('darkMode');
@@ -196,23 +195,23 @@
 	];
 
 	$: playerNavItems = [
-		{ href: '/', label: '🏐 Mijn dashboard' },
+		{ href: '/', label: 'Mijn dashboard' },
 		{ href: '/inbox', label: inboxLabel },
-		{ href: '/profile', label: '👤 Mijn profiel' },
+		{ href: '/profile', label: 'Mijn profiel' },
 	];
 
 	$: navItems = [
 		...($currentRole === 'player'
 			? playerNavItems
 			: $currentRole === 'parent'
-				? [{ href: '/', label: '👨‍👩‍👦 Mijn dashboard' }, { href: '/inbox', label: inboxLabel }]
+				? [{ href: '/', label: 'Mijn dashboard' }, { href: '/inbox', label: inboxLabel }]
 				: [
 						...coachNavItems.filter(
 							(item) => !$permission || item.permissions.includes($permission)
 						),
 						// A coach who also plays keeps a shortcut to their own player view
 						// without having to switch roles.
-						...($isPlayer ? [{ href: '/me', label: '🏐 Mijn training' }] : []),
+						...($isPlayer ? [{ href: '/me', label: 'Mijn training' }] : []),
 						{ href: '/inbox', label: inboxLabel },
 					]),
 		...($isPlatformAdmin ? [{ href: '/platform-admin', label: 'Clubs beheren' }] : []),
@@ -439,18 +438,7 @@
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Rol</p>
 								<div class="flex items-center justify-between gap-2">
-									<span class="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-										<span class="w-6 h-6 rounded-lg bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
-											{#if $currentRole === 'coach'}
-												<ClipboardList class="w-3.5 h-3.5" />
-											{:else if $currentRole === 'player'}
-												<User class="w-3.5 h-3.5" />
-											{:else if $currentRole === 'parent'}
-												<Users class="w-3.5 h-3.5" />
-											{/if}
-										</span>
-										<span>{APP_ROLE_LABELS[$currentRole]}</span>
-									</span>
+									<span class="text-sm font-medium text-gray-800 dark:text-gray-200">{APP_ROLE_LABELS[$currentRole]}</span>
 									{#if $availableRoles.length > 1}
 										<button
 											class="text-sm font-medium text-primary-600 hover:text-primary-800 dark:hover:text-primary-400"
