@@ -3,10 +3,10 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { pb, getContextPlayers, updateMatch, getMatchPlayerStats, createMatchPlayerStats, updateMatchPlayerStats, deleteMatchPlayerStats, getTeamAccessForTeam } from '$lib/pocketbase';
+	import { pb, getContextPlayers, updateMatch, getMatchPlayerStats, createMatchPlayerStats, updateMatchPlayerStats, deleteMatchPlayerStats, getTeamTrainerOptions } from '$lib/pocketbase';
 	import type { GameSystem, Match, MatchPlayerStats, MatchStatus, Player, PlayerPosition, SetScore, Substitution, Timeout } from '$lib/types';
 	import { getMatchStatus } from '$lib/utils/match';
-	import type { TeamAccess } from '$lib/pocketbase';
+	import type { TrainerOption } from '$lib/pocketbase';
 	import { COURT_POSITION_LABELS, GAME_SYSTEM_LABELS, POSITION_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId } from '$lib/stores/context';
 
@@ -29,7 +29,7 @@
 	let generalNotes = '';
 
 	// Coaches
-	let coachMembers: TeamAccess[] = [];
+	let coachMembers: TrainerOption[] = [];
 	let selectedCoaches: string[] = [];
 
 	// Set scores
@@ -150,8 +150,7 @@
 			// Load coaches
 			if ($selectedTeamId) {
 				try {
-					const allAccess = await getTeamAccessForTeam($selectedTeamId);
-					coachMembers = allAccess.filter(a => a.is_trainer);
+					coachMembers = await getTeamTrainerOptions($selectedTeamId, selectedCoaches);
 				} catch (e) { /* ignore */ }
 			}
 

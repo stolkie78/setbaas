@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { getContextPlayers, createTraining, createTrainingAttendance, getTrainingTemplates, getTeamAccessForTeam } from '$lib/pocketbase';
+	import { getContextPlayers, createTraining, createTrainingAttendance, getTrainingTemplates, getTeamTrainerOptions } from '$lib/pocketbase';
 	import { pb } from '$lib/pocketbase';
 	import type { Player, AttendanceStatus, TrainingTemplate } from '$lib/types';
-	import type { TeamAccess } from '$lib/pocketbase';
+	import type { TrainerOption } from '$lib/pocketbase';
 	import { TRAINING_TYPE_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId, selectedClubId, currentClub } from '$lib/stores/context';
 	import { authUser } from '$lib/stores/auth';
@@ -80,7 +80,7 @@
 	let formContent = '';
 
 	// Trainers
-	let trainerMembers: TeamAccess[] = [];
+	let trainerMembers: TrainerOption[] = [];
 	let selectedTrainers: string[] = [];
 
 	// Per-player attendance & rating
@@ -135,8 +135,7 @@
 		// Load trainers
 		if ($selectedTeamId) {
 			try {
-				const allAccess = await getTeamAccessForTeam($selectedTeamId);
-				trainerMembers = allAccess.filter(a => a.is_trainer);
+				trainerMembers = await getTeamTrainerOptions($selectedTeamId);
 			} catch (e) { /* ignore */ }
 		}
 	});

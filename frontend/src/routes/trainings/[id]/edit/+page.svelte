@@ -3,9 +3,9 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { pb, getContextPlayers, updateTraining, getTrainingAttendance, createTrainingAttendance, updateTrainingAttendance, deleteTrainingAttendance, getTrainingTemplates, getTeamAccessForTeam } from '$lib/pocketbase';
+	import { pb, getContextPlayers, updateTraining, getTrainingAttendance, createTrainingAttendance, updateTrainingAttendance, deleteTrainingAttendance, getTrainingTemplates, getTeamTrainerOptions } from '$lib/pocketbase';
 	import type { Player, Training, TrainingAttendance, AttendanceStatus, TrainingTemplate } from '$lib/types';
-	import type { TeamAccess } from '$lib/pocketbase';
+	import type { TrainerOption } from '$lib/pocketbase';
 	import { TRAINING_TYPE_LABELS } from '$lib/types';
 	import { selectedTeamId, selectedSeasonId, selectedClubId, currentClub } from '$lib/stores/context';
 	import MarkdownEditor from '$lib/components/MarkdownEditor.svelte';
@@ -76,7 +76,7 @@
 	let formContent = '';
 
 	// Trainers
-	let trainerMembers: TeamAccess[] = [];
+	let trainerMembers: TrainerOption[] = [];
 	let selectedTrainers: string[] = [];
 
 	// Per-player attendance & rating
@@ -119,8 +119,7 @@
 			// Load trainers
 			if ($selectedTeamId) {
 				try {
-					const allAccess = await getTeamAccessForTeam($selectedTeamId);
-					trainerMembers = allAccess.filter(a => a.is_trainer);
+					trainerMembers = await getTeamTrainerOptions($selectedTeamId, selectedTrainers);
 				} catch (e) { /* ignore */ }
 			}
 

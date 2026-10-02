@@ -203,7 +203,8 @@ ensure_collection "{
     {\"name\": \"nevobo_team_type\", \"type\": \"text\", \"required\": false},
     {\"name\": \"nevobo_team_number\", \"type\": \"number\", \"required\": false},
     {\"name\": \"nevobo_url\", \"type\": \"url\", \"required\": false},
-    {\"name\": \"ai_system_prompt\", \"type\": \"text\", \"required\": false, \"max\": 8000}
+    {\"name\": \"ai_system_prompt\", \"type\": \"text\", \"required\": false, \"max\": 8000},
+    {\"name\": \"trainers\", \"type\": \"relation\", \"required\": false, \"collectionId\": \"_pb_users_auth_\", \"maxSelect\": 20}
   ],
   \"listRule\": \"@request.auth.id != \\\"\\\"\",
   \"viewRule\": \"id != \\\"\\\"\",

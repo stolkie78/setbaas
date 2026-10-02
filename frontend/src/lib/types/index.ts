@@ -68,6 +68,9 @@ export interface Team extends RecordModel {
 	nevobo_team_number?: number;
 	/** Team-specific AI system prompt; overrides the club prompt when set. */
 	ai_system_prompt?: string;
+	/** Fixed trainers/coaches of the team (users). They are the ones offered in
+	 *  the training and match forms and who receive absence messages. */
+	trainers?: string[];
 	expand?: {
 		club?: Club;
 	};

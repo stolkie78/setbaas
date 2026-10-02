@@ -949,3 +949,55 @@ export async function notifyAttendanceChange(type: 'training' | 'match', eventId
 		console.error('Kon trainers niet informeren:', e);
 	}
 }
+
+// === Fixed team trainers ===
+
+export interface TrainerOption {
+	user: string;
+	expand?: { user?: { id: string; email: string; name: string } };
+}
+
+/**
+ * Who can be picked as trainer/coach in the training and match forms: the
+ * team's fixed trainers (teams.trainers). Teams without fixed trainers fall
+ * back to everyone with the trainer role (club or legacy team access).
+ * `alwaysInclude` keeps already-selected users visible when editing.
+ */
+export async function getTeamTrainerOptions(teamId: string, alwaysInclude: string[] = []): Promise<TrainerOption[]> {
+	if (!teamId) return [];
+	const team = await pb.collection('teams').getOne<Team & { expand?: { trainers?: { id: string; email: string; name: string }[] } }>(teamId, {
+		expand: 'trainers',
+	});
+
+	const options = new Map<string, TrainerOption>();
+	const fixed = team.expand?.trainers ?? [];
+	if (fixed.length > 0) {
+		for (const u of fixed) options.set(u.id, { user: u.id, expand: { user: u } });
+	} else {
+		const [clubAccess, teamAccess] = await Promise.all([
+			team.club ? getClubAccessForClub(team.club).catch(() => []) : Promise.resolve([] as ClubAccess[]),
+			getTeamAccessForTeam(teamId).catch(() => [] as TeamAccess[]),
+		]);
+		for (const a of [...clubAccess, ...teamAccess]) {
+			if (a.is_trainer && !options.has(a.user)) {
+				options.set(a.user, { user: a.user, expand: { user: (a.expand as any)?.user } });
+			}
+		}
+	}
+
+	const missing = alwaysInclude.filter((id) => id && !options.has(id));
+	if (missing.length > 0) {
+		const users = await pb.collection('users').getFullList<{ id: string; email: string; name: string }>({
+			filter: missing.map((id) => `id = "${id}"`).join(' || '),
+		}).catch(() => []);
+		for (const u of users) options.set(u.id, { user: u.id, expand: { user: u } });
+	}
+
+	return [...options.values()].sort((a, b) =>
+		(a.expand?.user?.name || a.expand?.user?.email || '').localeCompare(b.expand?.user?.name || b.expand?.user?.email || '')
+	);
+}
+
+export async function setTeamTrainers(teamId: string, trainers: string[]): Promise<void> {
+	await pb.collection('teams').update(teamId, { trainers });
+}

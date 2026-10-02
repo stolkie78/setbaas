@@ -3,8 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { pb, getTrainingAttendance, getContextPlayers, getTeamAccessForTeam, updateTrainingAttendance, updateTraining } from '$lib/pocketbase';
-	import type { TeamAccess } from '$lib/pocketbase';
+	import { pb, getTrainingAttendance, getContextPlayers, getTeamTrainerOptions, updateTrainingAttendance, updateTraining } from '$lib/pocketbase';
+	import type { TrainerOption } from '$lib/pocketbase';
 	import type { Training, TrainingAttendance, Player, AttendanceStatus } from '$lib/types';
 	import { generateWithAI as callAI, loadClubAISettings } from '$lib/ai/client';
 	import { selectedClubId } from '$lib/stores/context';
@@ -42,7 +42,7 @@
 	let playerNotes: Record<string, string> = {};
 
 	// Trainer
-	let trainerMembers: TeamAccess[] = [];
+	let trainerMembers: TrainerOption[] = [];
 	let selectedTrainers: string[] = [];
 
 	// Reflection
@@ -96,8 +96,7 @@
 
 			if (training.team) {
 				try {
-					const allAccess = await getTeamAccessForTeam(training.team);
-					trainerMembers = allAccess.filter(a => a.is_trainer);
+					trainerMembers = await getTeamTrainerOptions(training.team, selectedTrainers);
 				} catch (e) { /* ignore */ }
 			}
 		} catch (e) {

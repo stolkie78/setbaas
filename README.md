@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.6.0
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.7.0
 
 ## Tech Stack
 
@@ -60,6 +60,7 @@ Een Progressive Web App voor het beheren van je volleybalteam: spelers, training
 - **Inloggen zonder wachtwoord** — Inlogcode per e-mail, voor wie geen Google-account gebruikt
 - **Wachtwoord vergeten** — Resetlink per e-mail
 - **Inbox** — Ingebouwde mailbox voor alle rollen; trainers krijgen een bericht (en mail) als een speler zich afmeldt
+- **Vaste trainers per team** — Kies per team welke coaches erbij horen; alleen zij zijn kiesbaar bij trainingen en wedstrijden en krijgen afmeldingen
 - **Clubs** — Club → team → seizoen structuur, teams gekoppeld aan een club
 - **Multi-team** — Meerdere teams binnen één installatie, teamkeuze gefilterd op club
 - **Rollen** — Admin (alles), Coach (team beheer), Speler (eigen dashboard)
@@ -286,7 +287,7 @@ Daarmee werkt:
 
 Inlogcodes en resetmails verstuurt PocketBase zelf. De setup (`pb-setup`, of `./scripts/deploy.sh prod --setup`) zet daarom de SMTP-instellingen, de afzender en de Nederlandse mailteksten in PocketBase. Draai de setup opnieuw na het wijzigen van de SMTP-gegevens.
 
-**Inbox en afmeldingen** — Wijzigt een speler zijn status voor een training of wedstrijd naar iets anders dan *Aanwezig*, dan krijgen de trainer(s) van die training of de coach(es) van die wedstrijd een bericht in hun inbox. Zijn daar geen trainers ingevuld, dan gaat het naar de trainers van het team. Elk bericht wordt ook gemaild, tenzij de ontvanger in de inbox *Stuur nieuwe berichten ook naar mijn e-mail* uitzet. Snel achter elkaar wisselen van status levert één bericht op, en er wordt niet gemeld voor events die al voorbij zijn.
+**Inbox en afmeldingen** — Wijzigt een speler zijn status voor een training of wedstrijd naar iets anders dan *Aanwezig*, dan krijgen de vaste trainers van het team (in te stellen bij *Configuratie → Teams*) een bericht in hun inbox. Heeft het team nog geen vaste trainers, dan gaat het naar de trainer(s) van die training of de coach(es) van die wedstrijd, en anders naar alle trainers van het team. Elk bericht wordt ook gemaild, tenzij de ontvanger in de inbox *Stuur nieuwe berichten ook naar mijn e-mail* uitzet. Snel achter elkaar wisselen van status levert één bericht op, en er wordt niet gemeld voor events die al voorbij zijn.
 
 Zonder SMTP worden uitnodigingen aangemaakt met een deelbare link die je handmatig kunt kopiëren. Inboxberichten worden dan alleen in de app getoond.
 
@@ -406,6 +407,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.7.0** | 2026-10-03 | Vaste trainers per team. Bij *Configuratie → Teams* kies je per team welke clubleden met de rol Trainer erbij horen. Alleen zij zijn kiesbaar als trainer of coach bij trainingen en wedstrijden, en alleen zij krijgen afmeldingen in hun inbox en per mail. Teams zonder vaste trainers werken zoals voorheen. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) voor het nieuwe veld `teams.trainers`. |
 | **v4.6.0** | 2026-10-03 | E-mail via de eigen mailserver (`mail.setbaas.nl`, afzender `info@setbaas.nl`). Inloggen zonder wachtwoord met een inlogcode per e-mail, ook bij het accepteren van een uitnodiging. *Wachtwoord vergeten?* met een resetlink. Een ingebouwde inbox voor alle rollen met een teller voor ongelezen berichten: trainers en coaches krijgen een bericht als een speler zich afmeldt voor een training of wedstrijd (of weer aanmeldt), en dat bericht wordt ook gemaild (uit te zetten in de inbox). Herstelt ook het accepteren van uitnodigingen, dat de gebruikers-ID niet meestuurde. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) zodat PocketBase de SMTP-instellingen en de `messages`-collectie krijgt. |
 | **v4.5.5** | 2026-10-02 | Nieuw ouderdashboard voor ouderaccounts met beheerder-beheerde koppelingen aan meerdere spelers. Ouders zien per gekoppelde speler het profiel, komende trainingen en wedstrijden, de eigen aanwezigheidsstatus en recente uitslagen. Aanwezigheidspercentages voor afgeronde trainingen en gespeelde wedstrijden tonen ook de bijgewoonde aantallen. Persoonlijke vragenlijstgegevens, competentiescores, coachnotities en gegevens van andere spelers blijven buiten het ouderdashboard. |
 | **v4.5.4** | 2026-10-02 | Kleine opfrisbeurt van de tijdlijn op het dashboard: het label **Training** of **Wedstrijd** staat nu op een eigen regel bóven de titel, zodat de naam van de tegenstander of de trainingsdag beter leesbaar is. De links **Alle trainingen** en **Alle wedstrijden** staan nu gecentreerd. Daarnaast is vastgelegd dat lokaal bekijken altijd via `./scripts/deploy.sh test` gaat (app op poort 3000, PocketBase op 8090) in plaats van een losse dev-server. |

@@ -46,11 +46,15 @@ function formatWhen(date: string): string {
 }
 
 /**
- * The trainers linked to the event (training.trainer / match.coach). When none
- * are set, fall back to the trainers of the team: club_access trainers whose
- * default team is this team, plus legacy team_access trainers.
+ * The fixed trainers of the team (teams.trainers) get the message. Teams that
+ * have none configured yet fall back to the trainers linked to the event
+ * (training.trainer / match.coach), then to club_access trainers whose default
+ * team is this team, plus legacy team_access trainers.
  */
 async function findTrainers(adminToken: string, event: any, type: 'training' | 'match', team: any): Promise<string[]> {
+	const fixed: string[] = team?.trainers ?? [];
+	if (fixed.length > 0) return fixed;
+
 	const direct: string[] = (type === 'training' ? event.trainer : event.coach) ?? [];
 	if (direct.length > 0) return direct;
 

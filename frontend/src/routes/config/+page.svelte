@@ -17,6 +17,7 @@
 		deleteTeam,
 		createSeason,
 		getClubAccessForClub,
+		setTeamTrainers,
 		grantClubAccess,
 		revokeClubAccess,
 		updateClubAccess,
@@ -333,6 +334,70 @@
 	// anywhere" as admin (used only for showing/hiding nav items).
 	$: myAdminClubIds = new Set($userClubAccess.filter((a) => a.role === 'admin').map((a) => a.club));
 	$: manageableClubs = clubs.filter((c) => myAdminClubIds.has(c.id));
+
+	// === Fixed trainers per team ===
+	// Candidates are club members with the trainer role; the chosen ones are
+	// offered in the training/match forms and receive absence messages.
+	type TrainerUser = { id: string; name: string; email: string };
+	let trainerCandidatesByClub: Record<string, TrainerUser[]> = {};
+	let trainerUsers: Record<string, TrainerUser> = {};
+	let trainerCandidatesKey = '';
+	let savingTrainersFor: string | null = null;
+
+	$: if (activeTab === 'teams' && manageableClubs.length > 0) {
+		const key = manageableClubs.map((c) => c.id).join(',');
+		if (key !== trainerCandidatesKey) {
+			trainerCandidatesKey = key;
+			loadTrainerCandidates();
+		}
+	}
+
+	async function loadTrainerCandidates() {
+		const byClub: Record<string, TrainerUser[]> = {};
+		const users: Record<string, TrainerUser> = {};
+		await Promise.all(
+			manageableClubs.map(async (club) => {
+				try {
+					const access = await getClubAccessForClub(club.id);
+					byClub[club.id] = access
+						.filter((a) => a.is_trainer && a.expand?.user)
+						.map((a) => a.expand!.user as TrainerUser)
+						.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+					for (const a of access) if (a.expand?.user) users[a.user] = a.expand.user as TrainerUser;
+				} catch (e) {
+					console.error('Failed to load trainers for club', club.id, e);
+					byClub[club.id] = [];
+				}
+			})
+		);
+		trainerCandidatesByClub = byClub;
+		trainerUsers = users;
+	}
+
+	// Candidates plus anyone already linked who lost the trainer role, so they
+	// can still be removed.
+	function trainerChoices(team: Team): TrainerUser[] {
+		const candidates = trainerCandidatesByClub[team.club || ''] || [];
+		const extra = (team.trainers || [])
+			.filter((id) => !candidates.some((c) => c.id === id))
+			.map((id) => trainerUsers[id] || { id, name: 'Onbekende gebruiker', email: '' });
+		return [...candidates, ...extra];
+	}
+
+	async function toggleTeamTrainer(team: Team, userId: string) {
+		const current = team.trainers || [];
+		const next = current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId];
+		savingTrainersFor = team.id;
+		try {
+			await setTeamTrainers(team.id, next);
+			teams = teams.map((t) => (t.id === team.id ? { ...t, trainers: next } : t));
+		} catch (e) {
+			console.error('Failed to save team trainers:', e);
+			alert('Fout bij opslaan trainers');
+		} finally {
+			savingTrainersFor = null;
+		}
+	}
 
 	let newClubName = '';
 	let savingClub = false;
@@ -941,6 +1006,38 @@
 								/>
 								{#if team.nevobo_url}
 									<a href={team.nevobo_url} target="_blank" class="text-blue-400 text-xs hover:underline">↗</a>
+								{/if}
+							</div>
+							<div class="space-y-1">
+								<p class="text-xs font-semibold text-gray-600 dark:text-gray-400">
+									Vaste trainers / coaches
+									<span class="font-normal text-gray-400">— kiesbaar bij trainingen en wedstrijden, krijgen afmeldingen</span>
+								</p>
+								{#if trainerChoices(team).length === 0}
+									<p class="text-xs text-gray-400 italic">
+										Nog niemand met de rol Trainer in deze club. Zet die rol aan bij Toegang.
+									</p>
+								{:else}
+									<div class="flex flex-wrap gap-1.5">
+										{#each trainerChoices(team) as trainer (trainer.id)}
+											{@const linked = (team.trainers || []).includes(trainer.id)}
+											<button
+												type="button"
+												class="px-2.5 py-1 rounded-full text-xs border transition-colors
+													{linked
+														? 'bg-primary-600 border-primary-600 text-white'
+														: 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-primary-400'}"
+												aria-pressed={linked}
+												disabled={savingTrainersFor === team.id}
+												on:click={() => toggleTeamTrainer(team, trainer.id)}
+											>
+												{linked ? '✓ ' : ''}{trainer.name || trainer.email}
+											</button>
+										{/each}
+									</div>
+									{#if !(team.trainers || []).length}
+										<p class="text-xs text-gray-400 italic">Geen vaste trainers: alle trainers van de club zijn kiesbaar.</p>
+									{/if}
 								{/if}
 							</div>
 							<div>
