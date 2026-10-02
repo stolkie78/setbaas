@@ -3,10 +3,12 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { getPlayer, updatePlayer, deletePlayer, getFileUrl } from '$lib/pocketbase';
+	import { getPlayer, updatePlayer, deletePlayer, getFileUrl, getClubAccessForClub } from '$lib/pocketbase';
+	import type { ClubAccess } from '$lib/pocketbase';
 	import type { Player, PlayerPosition, ExtraActivity, ExtraActivityType, Team } from '$lib/types';
 	import { POSITION_LABELS, STATUS_LABELS, EXTRA_ACTIVITY_LABELS } from '$lib/types';
 	import { teams as teamsStore, selectedClubId } from '$lib/stores/context';
+	import { isAdmin, rolesLoaded } from '$lib/stores/role';
 
 	let player: Player | null = null;
 	let loading = true;
@@ -20,9 +22,26 @@
 	let formEmail = '';
 	let formPhoto: FileList | null = null;
 	let formExtras: ExtraActivity[] = [];
+	let parentAccounts: ClubAccess[] = [];
+	let selectedParentIds: string[] = [];
+	let parentAccountsClubId = '';
 
 	$: clubTeams = ($teamsStore || []).filter((t: Team) => !$selectedClubId || t.club === $selectedClubId);
 	const extraTypes = Object.entries(EXTRA_ACTIVITY_LABELS) as [ExtraActivityType, string][];
+
+	$: if (player && $rolesLoaded && $isAdmin && $selectedClubId && parentAccountsClubId !== $selectedClubId) {
+		parentAccountsClubId = $selectedClubId;
+		loadParentAccounts($selectedClubId);
+	}
+
+	async function loadParentAccounts(clubId: string) {
+		try {
+			const access = await getClubAccessForClub(clubId);
+			parentAccounts = access.filter((member) => member.is_parent);
+		} catch (error) {
+			console.error('Failed to load parent accounts:', error);
+		}
+	}
 
 	function addExtra() {
 		formExtras = [...formExtras, { type: 'training', team: '', team_name: '', hours: undefined, notes: '' }];
@@ -45,6 +64,7 @@
 	onMount(async () => {
 		try {
 			const id = $page.params.id;
+			if (!id) return;
 			player = await getPlayer(id);
 			formName = player.name;
 			formPositions = player.position || [];
@@ -53,6 +73,7 @@
 			formJersey = player.jersey_number ? String(player.jersey_number) : '';
 			formEmail = player.email || '';
 			formExtras = Array.isArray(player.extra_activities) ? [...player.extra_activities] : [];
+			selectedParentIds = Array.isArray(player.parent_users) ? [...player.parent_users] : [];
 		} catch (e) {
 			console.error('Failed to load player:', e);
 		} finally {
@@ -89,6 +110,13 @@
 					notes: a.notes?.trim() || undefined
 				}));
 			data.append('extra_activities', JSON.stringify(cleanedExtras));
+			const parentIdsToSave = [...new Set(selectedParentIds)];
+			for (const parentId of parentIdsToSave) {
+				data.append('parent_users', parentId);
+			}
+			if (parentIdsToSave.length === 0) {
+				data.append('parent_users', '');
+			}
 
 			await updatePlayer(player.id, data);
 			goto(`${base}/players/${player.id}`);
@@ -191,6 +219,40 @@
 				<input id="photo" class="input" type="file" accept="image/*" bind:files={formPhoto} />
 			</div>
 		</div>
+
+		{#if $isAdmin}
+			<div class="card space-y-3">
+				<div>
+					<h3 class="font-semibold text-gray-800 dark:text-gray-200">Ouderaccounts</h3>
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						Deze accounts kunnen de gegevens van deze speler in hun ouderdashboard bekijken.
+						Een ouder kan aan meerdere spelers gekoppeld zijn.
+					</p>
+				</div>
+				{#if parentAccounts.length === 0}
+					<p class="text-sm text-gray-500 dark:text-gray-400">
+						Er zijn nog geen ouderaccounts aan deze club gekoppeld. Voeg eerst een clublid toe en geef het de rol Ouder.
+					</p>
+				{:else}
+					<div class="space-y-2">
+						{#each parentAccounts as parent}
+							<label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+								<input
+									type="checkbox"
+									value={parent.user}
+									bind:group={selectedParentIds}
+									class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800"
+								/>
+								<span>{parent.expand?.user?.name || parent.expand?.user?.email || 'Ouderaccount'}</span>
+								{#if parent.expand?.user?.email}
+									<span class="text-xs text-gray-500 dark:text-gray-400">({parent.expand.user.email})</span>
+								{/if}
+							</label>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="card space-y-3">
 			<div>

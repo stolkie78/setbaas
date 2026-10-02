@@ -371,6 +371,15 @@ eerste admin per club kan toewijzen — daarna beheert die admin zijn club zelf 
 via Configuratie → Toegang (leden toevoegen/uitnodigen, rollen wijzigen, teams
 hernoemen/verwijderen).
 
+Ouderaccounts zien op hun dashboard alleen spelers die een beheerder aan hun account
+heeft gekoppeld. Koppelen kan per speler via **Spelers → Bewerken → Ouderaccounts**;
+een ouderaccount kan aan meerdere spelers worden gekoppeld. Het dashboard toont de
+spelersfoto, positie, rugnummer en teamnaam, komende teamtrainingen en wedstrijden, de
+eigen aanwezigheidsstatus (zonder afwezigheidsreden) en recente wedstrijduitslagen. Het
+toont ook per speler aanwezigheidspercentages voor afgeronde trainingen en gespeelde
+wedstrijden. Het toont geen antwoorden op vragenlijsten, competentiescores, coachnotities
+of gegevens van andere spelers.
+
 Wedstrijden hebben een `status` (`open` of `played`). Bestaande wedstrijden zonder status
 krijgen er automatisch een op basis van hun datum: alles in het verleden wordt `played`, de
 rest `open`.
@@ -381,6 +390,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.5.5** | 2026-10-02 | Nieuw ouderdashboard voor ouderaccounts met beheerder-beheerde koppelingen aan meerdere spelers. Ouders zien per gekoppelde speler het profiel, komende trainingen en wedstrijden, de eigen aanwezigheidsstatus en recente uitslagen. Aanwezigheidspercentages voor afgeronde trainingen en gespeelde wedstrijden tonen ook de bijgewoonde aantallen. Persoonlijke vragenlijstgegevens, competentiescores, coachnotities en gegevens van andere spelers blijven buiten het ouderdashboard. |
 | **v4.5.4** | 2026-10-02 | Kleine opfrisbeurt van de tijdlijn op het dashboard: het label **Training** of **Wedstrijd** staat nu op een eigen regel bóven de titel, zodat de naam van de tegenstander of de trainingsdag beter leesbaar is. De links **Alle trainingen** en **Alle wedstrijden** staan nu gecentreerd. Daarnaast is vastgelegd dat lokaal bekijken altijd via `./scripts/deploy.sh test` gaat (app op poort 3000, PocketBase op 8090) in plaats van een losse dev-server. |
 | **v4.5.3** | 2026-10-01 | Herstelt de reverse proxy: Caddy stuurde `/api/*` volledig naar PocketBase, waardoor de SvelteKit-routes `/api/nevobo`, `/api/ai`, `/api/invite` en `/api/backups` een 404 teruggaven. In de app zag je dat als *"Geen wedstrijden gevonden voor dit team"* terwijl de Nevobo URL gewoon klopte. De site configs staan nu als drop-in in `caddy/conf.d/` met de SvelteKit-routes vóór de PocketBase catch-all, en `./scripts/deploy.sh <demo\|prod>` installeert, valideert en herlaadt ze automatisch (met terugrol bij een ongeldige config). Mislukt de Nevobo-proxy, dan toont het importscherm voortaan de echte foutmelding in plaats van een lege lijst. |
 | **v4.5.2** | 2026-10-01 | De Nevobo-import gebruikt nu uitsluitend de **Nevobo URL** die bij het team staat ingesteld (Instellingen → Teams). De losse velden voor verenigingscode, teamtype en teamnummer zijn uit het importscherm verdwenen; dat scherm toont alleen nog de ingestelde URL met een link om hem te wijzigen, en waarschuwt wanneer de URL ontbreekt of niet de vorm `.../competitie/vereniging/{code}/{type}/{nummer}` heeft. De import overschrijft de teaminstellingen niet langer. |

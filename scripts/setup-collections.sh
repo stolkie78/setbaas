@@ -227,6 +227,7 @@ ensure_collection '{
     {"name": "jersey_number", "type": "number", "required": false, "min": 1, "max": 999, "onlyInt": true},
     {"name": "email", "type": "email", "required": false},
     {"name": "user_id", "type": "relation", "required": false, "collectionId": "_pb_users_auth_", "maxSelect": 1},
+    {"name": "parent_users", "type": "relation", "required": false, "collectionId": "_pb_users_auth_", "maxSelect": 20},
     {"name": "bio", "type": "text", "required": false, "max": 300},
     {"name": "extra_activities", "type": "json", "required": false, "maxSize": 20000}
   ],

@@ -10,6 +10,7 @@ export interface Player extends RecordModel {
 	jersey_number?: number;
 	email?: string;
 	user_id?: string;
+	parent_users?: string[];
 	bio?: string;
 	/** Volleyball commitments outside this team, used for the load report. */
 	extra_activities?: ExtraActivity[];
