@@ -360,8 +360,7 @@
 				try {
 					const access = await getClubAccessForClub(club.id);
 					byClub[club.id] = access
-						// Same rule as the app's coach role: the trainer flag, or no role flags at all.
-						.filter((a) => a.expand?.user && (a.is_trainer || (!a.is_player && !a.is_parent)))
+						.filter((a) => a.is_trainer && a.expand?.user)
 						.map((a) => a.expand!.user as TrainerUser)
 						.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 					for (const a of access) if (a.expand?.user) users[a.user] = a.expand.user as TrainerUser;
