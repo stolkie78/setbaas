@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.7.1
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.7.2
 
 ## Tech Stack
 
@@ -407,6 +407,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.7.2** | 2026-10-03 | Op het dashboard springt de eerstvolgende training of wedstrijd eruit, met het label *Eerstvolgend*. Op het spelersdashboard telt een afteller af tot een gewijzigde aanwezigheid aan de trainer wordt doorgegeven, met een knop *Nu versturen* en een bevestiging achteraf. |
 | **v4.7.1** | 2026-10-03 | Het bericht dat een speler na een afmelding toch weer aanwezig is, komt nu ook aan als de trainer het afmeldbericht al had verwijderd. De laatst gemelde status staat daarvoor in een aparte collectie (`attendance_notices`). Het hamburgermenu toont geen iconen meer. De lijst met vaste trainers bij *Configuratie → Teams* bleef leeg; die toont nu de clubleden met de rol Trainer. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`). |
 | **v4.7.0** | 2026-10-03 | Vaste trainers per team. Bij *Configuratie → Teams* kies je per team welke clubleden met de rol Trainer erbij horen. Alleen zij zijn kiesbaar als trainer of coach bij trainingen en wedstrijden, en alleen zij krijgen afmeldingen in hun inbox en per mail. Teams zonder vaste trainers werken zoals voorheen. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) voor het nieuwe veld `teams.trainers`. |
 | **v4.6.0** | 2026-10-03 | E-mail via de eigen mailserver (`mail.setbaas.nl`, afzender `info@setbaas.nl`). Inloggen zonder wachtwoord met een inlogcode per e-mail, ook bij het accepteren van een uitnodiging. *Wachtwoord vergeten?* met een resetlink. Een ingebouwde inbox voor alle rollen met een teller voor ongelezen berichten: trainers en coaches krijgen een bericht als een speler zich afmeldt voor een training of wedstrijd (of weer aanmeldt), en dat bericht wordt ook gemaild (uit te zetten in de inbox). Herstelt ook het accepteren van uitnodigingen, dat de gebruikers-ID niet meestuurde. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) zodat PocketBase de SMTP-instellingen en de `messages`-collectie krijgt. |
