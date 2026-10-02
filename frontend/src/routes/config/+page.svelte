@@ -360,7 +360,8 @@
 				try {
 					const access = await getClubAccessForClub(club.id);
 					byClub[club.id] = access
-						.filter((a) => a.is_trainer && a.expand?.user)
+						// Same rule as the app's coach role: the trainer flag, or no role flags at all.
+						.filter((a) => a.expand?.user && (a.is_trainer || (!a.is_player && !a.is_parent)))
 						.map((a) => a.expand!.user as TrainerUser)
 						.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 					for (const a of access) if (a.expand?.user) users[a.user] = a.expand.user as TrainerUser;
@@ -376,11 +377,17 @@
 
 	// Candidates plus anyone already linked who lost the trainer role, so they
 	// can still be removed.
-	function trainerChoices(team: Team): TrainerUser[] {
-		const candidates = trainerCandidatesByClub[team.club || ''] || [];
+	// The maps are passed in (not read from the closure) so Svelte re-renders
+	// once the candidates have loaded.
+	function trainerChoices(
+		team: Team,
+		candidatesByClub: Record<string, TrainerUser[]>,
+		users: Record<string, TrainerUser>
+	): TrainerUser[] {
+		const candidates = candidatesByClub[team.club || ''] || [];
 		const extra = (team.trainers || [])
 			.filter((id) => !candidates.some((c) => c.id === id))
-			.map((id) => trainerUsers[id] || { id, name: 'Onbekende gebruiker', email: '' });
+			.map((id) => users[id] || { id, name: 'Onbekende gebruiker', email: '' });
 		return [...candidates, ...extra];
 	}
 
@@ -1013,13 +1020,13 @@
 									Vaste trainers / coaches
 									<span class="font-normal text-gray-400">— kiesbaar bij trainingen en wedstrijden, krijgen afmeldingen</span>
 								</p>
-								{#if trainerChoices(team).length === 0}
+								{#if trainerChoices(team, trainerCandidatesByClub, trainerUsers).length === 0}
 									<p class="text-xs text-gray-400 italic">
-										Nog niemand met de rol Trainer in deze club. Zet die rol aan bij Toegang.
+										{trainerCandidatesKey && Object.keys(trainerCandidatesByClub).length === 0 ? 'Trainers laden…' : 'Nog niemand met de rol Trainer in deze club. Zet die rol aan bij Toegang.'}
 									</p>
 								{:else}
 									<div class="flex flex-wrap gap-1.5">
-										{#each trainerChoices(team) as trainer (trainer.id)}
+										{#each trainerChoices(team, trainerCandidatesByClub, trainerUsers) as trainer (trainer.id)}
 											{@const linked = (team.trainers || []).includes(trainer.id)}
 											<button
 												type="button"
