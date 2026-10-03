@@ -93,6 +93,17 @@ export interface TeamPlayer extends RecordModel {
 	};
 }
 
+export interface TeamDocument extends RecordModel {
+	team: string;
+	name: string;
+	description: string;
+	file: string;
+	created_by?: string;
+}
+
+export const TEAM_DOCUMENT_MAX_SIZE = 20 * 1024 * 1024;
+export const TEAM_DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.txt,.csv,.jpg,.jpeg,.png,.webp';
+
 export type PlayerPosition =
 	| 'setter'
 	| 'outside_hitter'

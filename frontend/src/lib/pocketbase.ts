@@ -23,6 +23,7 @@ import type {
 	QuestionnaireStatus,
 	QuestionnaireQuestion,
 	QuestionnaireResponse,
+	TeamDocument,
 } from '$lib/types';
 
 // PocketBase URL: in production same origin (proxied via Caddy), in local dev use port 8090
@@ -446,6 +447,40 @@ export async function submitQuestionnaireResponse(data: {
 		return pb.collection('questionnaire_responses').update<QuestionnaireResponse>(existing.id, { answers: data.answers });
 	} catch {
 		return pb.collection('questionnaire_responses').create<QuestionnaireResponse>(data);
+	}
+}
+
+// === Team Documents ===
+
+export async function getTeamDocuments(teamId: string): Promise<TeamDocument[]> {
+	return pb.collection('team_documents').getFullList<TeamDocument>({
+		filter: pb.filter('team = {:team}', { team: teamId }),
+		sort: 'name',
+	});
+}
+
+export async function createTeamDocument(data: FormData): Promise<TeamDocument> {
+	return pb.collection('team_documents').create<TeamDocument>(data);
+}
+
+export async function deleteTeamDocument(id: string): Promise<boolean> {
+	return pb.collection('team_documents').delete(id);
+}
+
+export async function downloadTeamDocument(document: TeamDocument): Promise<void> {
+	const token = await pb.files.getToken();
+	const response = await fetch(pb.files.getUrl(document, document.file, { token, download: true }));
+	if (!response.ok) throw new Error(`Document download failed (${response.status})`);
+	const url = URL.createObjectURL(await response.blob());
+	const link = window.document.createElement('a');
+	link.href = url;
+	link.download = document.file;
+	window.document.body.appendChild(link);
+	try {
+		link.click();
+	} finally {
+		link.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	}
 }
 

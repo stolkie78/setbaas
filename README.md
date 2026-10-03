@@ -40,6 +40,7 @@ Een Progressive Web App voor het beheren van je volleybalteam: spelers, training
 - **Cascade delete** — Verwijderen van speler ruimt alle gerelateerde data op
 - **Vragenlijsten** — Coaches maken en versturen named vragenlijsten met open tekst-, meerkeuze- en schaalvragen; antwoorden zijn per speler zichtbaar in het teamoverzicht en spelersprofiel
 - **Inbox** — Spelers beantwoorden actieve vragenlijsten vanuit hun eigen Inbox en zien daar ook eerdere antwoorden terug
+- **Teamdocumenten** — Onder **Team → Documenten** uploaden beheerders en gebruikers bestanden met een naam en optionele omschrijving. Ze zijn direct te downloaden vanaf het spelersdashboard en de documentenpagina. Documenten horen bij het team (niet bij een seizoen); lezers kunnen downloaden, maar niet uploaden of verwijderen. PDF, Office-bestanden, tekst en afbeeldingen (JPG/PNG/WebP) tot 20 MB worden ondersteund. Bestanden zijn beschermd en alleen toegankelijk voor leden van de club en beheerders. Draai na het updaten `./scripts/deploy.sh prod --setup` om de collectie `team_documents` en de toegangsregels aan te maken.
 
 ### 🏆 Wedstrijden
 - **Wedstrijdbeheer** — Per-set lineups (positie 1-6), spelsysteem, wissels, timeouts
@@ -407,6 +408,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.8.0** | 2026-10-03 | Teamdocumenten: onder **Team → Documenten**, naast de vragenlijsten, delen beheerders en gebruikers bestanden met een naam en omschrijving. Spelers downloaden ze vanaf hun dashboard. Ondersteunt PDF, Office, tekst en afbeeldingen tot 20 MB, met beschermde downloads en clubgebonden toegangsrechten. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) voor de nieuwe collectie `team_documents`. |
 | **v4.7.2** | 2026-10-03 | Op het dashboard springt de eerstvolgende training of wedstrijd eruit, met het label *Eerstvolgend*. Op het spelersdashboard telt een afteller af tot een gewijzigde aanwezigheid aan de trainer wordt doorgegeven, met een knop *Nu versturen* en een bevestiging achteraf. |
 | **v4.7.1** | 2026-10-03 | Het bericht dat een speler na een afmelding toch weer aanwezig is, komt nu ook aan als de trainer het afmeldbericht al had verwijderd. De laatst gemelde status staat daarvoor in een aparte collectie (`attendance_notices`). Het hamburgermenu toont geen iconen meer. De lijst met vaste trainers bij *Configuratie → Teams* bleef leeg; die toont nu de clubleden met de rol Trainer. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`). |
 | **v4.7.0** | 2026-10-03 | Vaste trainers per team. Bij *Configuratie → Teams* kies je per team welke clubleden met de rol Trainer erbij horen. Alleen zij zijn kiesbaar als trainer of coach bij trainingen en wedstrijden, en alleen zij krijgen afmeldingen in hun inbox en per mail. Teams zonder vaste trainers werken zoals voorheen. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) voor het nieuwe veld `teams.trainers`. |

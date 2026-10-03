@@ -10,6 +10,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import AttendanceStatusSwitcher from '$lib/components/AttendanceStatusSwitcher.svelte';
 	import LoadReport from '$lib/components/LoadReport.svelte';
+	import TeamDocuments from '$lib/components/TeamDocuments.svelte';
 	import { fetchPlayerLoad, type PlayerLoad } from '$lib/utils/load';
 	import { EXTRA_ACTIVITY_LABELS } from '$lib/types';
 	import type { ExtraActivityType } from '$lib/types';
@@ -447,6 +448,8 @@
 				<span class="text-primary-600 dark:text-primary-400 text-xl">→</span>
 			</a>
 		{/if}
+
+		<TeamDocuments teamId={$selectedTeamId} />
 
 		<!-- Upcoming Trainings -->
 		<div class="card !border-blue-200 dark:!border-blue-800/60 !bg-blue-50/30 dark:!bg-blue-900/10">

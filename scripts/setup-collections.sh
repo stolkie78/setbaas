@@ -497,6 +497,20 @@ ensure_collection "{
 
 QUESTIONNAIRES_ID=$(get_col_id "questionnaires")
 
+# Shared files stay locked until the scoped rules below have been applied.
+ensure_collection "{
+  \"name\": \"team_documents\",
+  \"type\": \"base\",
+  \"fields\": [
+    {\"name\": \"team\", \"type\": \"relation\", \"required\": true, \"collectionId\": \"$TEAMS_ID\", \"maxSelect\": 1},
+    {\"name\": \"name\", \"type\": \"text\", \"required\": true},
+    {\"name\": \"description\", \"type\": \"text\", \"required\": false},
+    {\"name\": \"file\", \"type\": \"file\", \"required\": true, \"maxSelect\": 1, \"maxSize\": 20971520, \"protected\": true,
+     \"mimeTypes\": [\"application/pdf\", \"application/msword\", \"application/vnd.openxmlformats-officedocument.wordprocessingml.document\", \"application/vnd.ms-excel\", \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\", \"application/vnd.ms-powerpoint\", \"application/vnd.openxmlformats-officedocument.presentationml.presentation\", \"application/vnd.oasis.opendocument.text\", \"application/vnd.oasis.opendocument.spreadsheet\", \"application/vnd.oasis.opendocument.presentation\", \"text/plain\", \"text/csv\", \"image/jpeg\", \"image/png\", \"image/webp\"]},
+    {\"name\": \"created_by\", \"type\": \"relation\", \"required\": false, \"collectionId\": \"_pb_users_auth_\", \"maxSelect\": 1}
+  ]
+}"
+
 # === 10d. Questionnaire Responses ===
 # One record per player per questionnaire — answers keyed by question id.
 # Players can only ever have one response per questionnaire (upserted).
@@ -1028,6 +1042,20 @@ RULE_EDIT='@request.auth.club_access_via_user.role ?= "admin" || @request.auth.c
 # Players must always be able to maintain their own attendance and answers,
 # even when their permission is "viewer".
 RULE_EDIT_OR_SELF="$RULE_EDIT"' || player.user_id = @request.auth.id'
+
+# Club members can read their club's team documents; admins retain the
+# existing cross-club access. A named join binds the writer and club to the
+# same access record, so edit rights in another club cannot leak across.
+DOCUMENT_READ="$AUTHED && ($RULE_ADMIN || @request.auth.club_access_via_user.club ?= team.club)"
+DOCUMENT_WRITE="$AUTHED && ($RULE_ADMIN || (@collection.club_access:document_editor.user ?= @request.auth.id && @collection.club_access:document_editor.club ?= team.club && @collection.club_access:document_editor.role ?= \"user\"))"
+DOCUMENT_RULES=$(jq -n --arg r "$DOCUMENT_READ" --arg w "$DOCUMENT_WRITE" \
+  '{listRule:$r, viewRule:$r, createRule:$w, updateRule:($w + " && @request.body.team:changed = false"), deleteRule:$w}')
+if ! curl -sf -o /dev/null -X PATCH "$PB_URL/api/collections/team_documents" \
+    -H "Authorization: $TOKEN" -H "Content-Type: application/json" -d "$DOCUMENT_RULES"; then
+  echo "❌ Could not apply team document permission rules"
+  exit 1
+fi
+echo "  ✓ team_documents (protected files, club-scoped access)"
 
 # Preflight: a syntactically invalid rule is rejected (safe), but an unsupported
 # back-relation that is silently accepted and always evaluates false would lock

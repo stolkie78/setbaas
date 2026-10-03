@@ -118,6 +118,9 @@
 		<a href="{base}/players/questionnaires" class="px-3 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600">
 			Vragenlijsten
 		</a>
+		<a href="{base}/players/documents" class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+			Documenten
+		</a>
 	</div>
 
 	<div class="flex justify-between items-center">
