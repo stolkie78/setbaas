@@ -2,7 +2,7 @@
 
 Een Progressive Web App voor het beheren van je volleybalteam: spelers, trainingen, wedstrijden en competentie-ontwikkeling. Gebouwd voor coaches die hun team professioneel willen managen vanaf telefoon, tablet of laptop.
 
-**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.7.2
+**Live:** [setbaas.nl](https://setbaas.nl) | **Versie:** 4.9.0
 
 ## Tech Stack
 
@@ -118,8 +118,10 @@ database is er één script dat alles regelt:
 ```bash
 cp .env.test.example .env.test   # vul PB_ADMIN_EMAIL + PB_ADMIN_PASSWORD in
 ./scripts/deploy.sh test         # bouwt, start, migreert en verifieert
-./scripts/deploy.sh test seed    # optioneel: demo data laden
+./scripts/deploy.sh test seed    # optioneel: showcase data laden (ook: demo seed)
 ```
+
+**Showcase/demo dataset** (`scripts/seed-demo-data.mjs`): een complete, realistische dataset voor tests en demo's — 2 clubs, 4 teams, ~49 spelers, een heel seizoen aan trainingen (gepland/actief/afgerond) met aanwezigheid en welzijn, wedstrijden met lineups en statistieken, competentiemetingen, periodisering, sjablonen, vragenlijsten, inbox, uitnodigingen en teamdocumenten. Datums zijn relatief aan vandaag. Logins (wachtwoord `SetBaas2026!`): `coach@`, `trainer@`, `speler@`, `ouder@` en `kijker@setbaas.nl`. Alleen voor `test` en `demo` (productie wordt geweigerd) en **overschrijft alle data**. **Werk dit script bij bij elke nieuwe feature of collectie.**
 
 Overige commando's: `status`, `logs`, `down` en `clean` (wist de testdatabase).
 Poorten zijn in te stellen met `TEST_HTTP_PORT` / `TEST_PB_PORT` in `.env.test`.
@@ -408,6 +410,7 @@ rest `open`.
 
 | Versie | Datum | Beschrijving |
 |--------|-------|-------------|
+| **v4.9.0** | 2026-10-10 | Showcase- en testdataset (`scripts/seed-demo-data.mjs`): een complete, realistische dataset met clubs, teams, spelers, een heel seizoen aan trainingen en wedstrijden, competenties, vragenlijsten, inbox, uitnodigingen en documenten, plus logins voor elke rol. Te laden met `./scripts/deploy.sh <test\|demo> seed` (productie wordt geweigerd). Nieuw: `FEATURES.md` met een korte introductie voor nieuwe gebruikers. |
 | **v4.8.0** | 2026-10-03 | Teamdocumenten: onder **Team → Documenten**, naast de vragenlijsten, delen beheerders en gebruikers bestanden met een naam en omschrijving. Spelers downloaden ze vanaf hun dashboard. Ondersteunt PDF, Office, tekst en afbeeldingen tot 20 MB, met beschermde downloads en clubgebonden toegangsrechten. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`) voor de nieuwe collectie `team_documents`. |
 | **v4.7.2** | 2026-10-03 | Op het dashboard springt de eerstvolgende training of wedstrijd eruit, met het label *Eerstvolgend*. Op het spelersdashboard telt een afteller af tot een gewijzigde aanwezigheid aan de trainer wordt doorgegeven, met een knop *Nu versturen* en een bevestiging achteraf. |
 | **v4.7.1** | 2026-10-03 | Het bericht dat een speler na een afmelding toch weer aanwezig is, komt nu ook aan als de trainer het afmeldbericht al had verwijderd. De laatst gemelde status staat daarvoor in een aparte collectie (`attendance_notices`). Het hamburgermenu toont geen iconen meer. De lijst met vaste trainers bij *Configuratie → Teams* bleef leeg; die toont nu de clubleden met de rol Trainer. Na het updaten de setup draaien (`./scripts/deploy.sh prod --setup`). |

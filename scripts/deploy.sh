@@ -12,7 +12,7 @@
 #   status    show container status and the recorded deploy state
 #   logs      follow the logs
 #   caddy     only install/reload the Caddy site config for this environment
-#   seed      load demo data (test only, destructive)
+#   seed      load showcase data (test and demo only, destructive)
 #   clean     remove the environment's database (test only, destructive)
 #
 # Options:
@@ -415,12 +415,19 @@ cmd_clean() {
 }
 
 cmd_seed() {
-    [ "$ENVIRONMENT" = "test" ] || die "'seed' is alleen toegestaan voor de test omgeving"
+    [ "$ENVIRONMENT" != "prod" ] || die "'seed' is niet toegestaan voor productie"
     command -v node >/dev/null 2>&1 || die "node is nodig om te seeden"
-    step "Demo data laden..."
-    confirm "Dit overschrijft de bestaande test data. Doorgaan?" || die "Afgebroken"
-    PB_URL="http://localhost:${TEST_PB_PORT:-8090}" node scripts/seed-test-data.mjs
-    ok "Demo data geladen"
+    [ -d frontend/node_modules/pocketbase ] || (cd frontend && npm ci --no-audit --no-fund) || die "npm install mislukt"
+    local pb_url
+    if [ "$ENVIRONMENT" = "test" ]; then
+        pb_url="http://localhost:${TEST_PB_PORT:-8090}"
+    else
+        pb_url="${SITE_URL:?SITE_URL ontbreekt in $ENV_FILE}"
+    fi
+    step "Showcase data laden in '$ENVIRONMENT' ($pb_url)..."
+    confirm "Dit overschrijft ALLE bestaande data in '$ENVIRONMENT'. Doorgaan?" || die "Afgebroken"
+    SEED_ENV="$ENVIRONMENT" PB_URL="$pb_url" node scripts/seed-demo-data.mjs
+    ok "Showcase data geladen"
 }
 
 cmd_caddy() {

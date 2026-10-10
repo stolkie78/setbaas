@@ -29,7 +29,7 @@ Deze handleiding en checklist zijn leidend voor het beheer en de productie-deplo
    - Gebruik **altijd** `./scripts/deploy.sh test` — nooit `npm run dev` of een losse vite-server.
    - De app draait dan op **http://localhost:3000** en PocketBase op **http://localhost:8090**.
    - Zo kijk je altijd naar een volledige omgeving mét database in plaats van een frontend zonder data.
-   - Handige extra's: `./scripts/deploy.sh test seed` (demo data) en `./scripts/deploy.sh test clean` (database wissen).
+   - Handige extra's: `./scripts/deploy.sh <test|demo> seed` (showcase data uit `scripts/seed-demo-data.mjs`; bij elke nieuwe feature bijwerken) en `./scripts/deploy.sh test clean` (database wissen).
 
 6. **Alleen fast-forward pull op productie**
 
@@ -156,7 +156,8 @@ De testomgeving publiceert poorten rechtstreeks (standaard app `3000`, PocketBas
 `8090`) en heeft dus geen reverse proxy nodig. Extra commando's voor test:
 
 ```bash
-./scripts/deploy.sh test seed    # demo data laden
+./scripts/deploy.sh test seed    # showcase data laden
+./scripts/deploy.sh demo seed    # idem op de demo-omgeving (via SITE_URL)
 ./scripts/deploy.sh test clean   # database wissen → volgende deploy is clean install
 ```
 
