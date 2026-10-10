@@ -416,8 +416,11 @@ cmd_clean() {
 
 cmd_seed() {
     [ "$ENVIRONMENT" != "prod" ] || die "'seed' is niet toegestaan voor productie"
-    command -v node >/dev/null 2>&1 || die "node is nodig om te seeden"
-    [ -d frontend/node_modules/pocketbase ] || (cd frontend && npm ci --no-audit --no-fund) || die "npm install mislukt"
+    local use_docker=false
+    if ! command -v node >/dev/null 2>&1; then
+        command -v docker >/dev/null 2>&1 || die "node of docker is nodig om te seeden"
+        use_docker=true
+    fi
     local pb_url
     if [ "$ENVIRONMENT" = "test" ]; then
         pb_url="http://localhost:${TEST_PB_PORT:-8090}"
@@ -426,7 +429,19 @@ cmd_seed() {
     fi
     step "Showcase data laden in '$ENVIRONMENT' ($pb_url)..."
     confirm "Dit overschrijft ALLE bestaande data in '$ENVIRONMENT'. Doorgaan?" || die "Afgebroken"
-    SEED_ENV="$ENVIRONMENT" PB_URL="$pb_url" node scripts/seed-demo-data.mjs
+    if [ "$use_docker" = true ]; then
+        info "node niet gevonden, seeden via Docker (node:22-alpine)"
+        docker run --rm --network host \
+            -e SEED_ENV="$ENVIRONMENT" -e PB_URL="$pb_url" \
+            -e PB_ADMIN_EMAIL -e PB_ADMIN_PASSWORD \
+            -v "$ROOT_DIR/scripts:/src/scripts:ro" \
+            -v "$ROOT_DIR/frontend/package.json:/src/frontend/package.json:ro" \
+            -v "$ROOT_DIR/frontend/package-lock.json:/src/frontend/package-lock.json:ro" \
+            node:22-alpine sh -c 'mkdir -p /work/frontend /work/scripts && cp /src/frontend/package*.json /work/frontend/ && cp /src/scripts/seed-demo-data.mjs /work/scripts/ && cd /work/frontend && npm ci --no-audit --no-fund --loglevel=error && cd /work && node scripts/seed-demo-data.mjs'
+    else
+        [ -d frontend/node_modules/pocketbase ] || (cd frontend && npm ci --no-audit --no-fund) || die "npm install mislukt"
+        SEED_ENV="$ENVIRONMENT" PB_URL="$pb_url" node scripts/seed-demo-data.mjs
+    fi
     ok "Showcase data geladen"
 }
 
