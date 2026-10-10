@@ -118,8 +118,10 @@ database is er één script dat alles regelt:
 ```bash
 cp .env.test.example .env.test   # vul PB_ADMIN_EMAIL + PB_ADMIN_PASSWORD in
 ./scripts/deploy.sh test         # bouwt, start, migreert en verifieert
-./scripts/deploy.sh test seed    # optioneel: demo data laden
+./scripts/deploy.sh test seed    # optioneel: showcase data laden (ook: demo seed)
 ```
+
+**Showcase/demo dataset** (`scripts/seed-demo-data.mjs`): een complete, realistische dataset voor tests en demo's — 2 clubs, 4 teams, ~49 spelers, een heel seizoen aan trainingen (gepland/actief/afgerond) met aanwezigheid en welzijn, wedstrijden met lineups en statistieken, competentiemetingen, periodisering, sjablonen, vragenlijsten, inbox, uitnodigingen en teamdocumenten. Datums zijn relatief aan vandaag. Logins (wachtwoord `SetBaas2026!`): `coach@`, `trainer@`, `speler@`, `ouder@` en `kijker@setbaas.nl`. Alleen voor `test` en `demo` (productie wordt geweigerd) en **overschrijft alle data**. **Werk dit script bij bij elke nieuwe feature of collectie.**
 
 Overige commando's: `status`, `logs`, `down` en `clean` (wist de testdatabase).
 Poorten zijn in te stellen met `TEST_HTTP_PORT` / `TEST_PB_PORT` in `.env.test`.

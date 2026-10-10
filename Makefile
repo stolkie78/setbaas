@@ -6,7 +6,7 @@ help:
 	@echo "  make test    - deploy the test environment (localhost)"
 	@echo "  make demo    - deploy the demo environment"
 	@echo "  make prod    - deploy production"
-	@echo "  make seed    - load demo data into the test environment"
+	@echo "  make seed    - load showcase data (ENV=test|demo)"
 	@echo "  make clean   - wipe the test database (clean install next time)"
 	@echo "  make status ENV=test | down ENV=test | logs ENV=test"
 	@echo ""
@@ -25,7 +25,7 @@ prod:
 	./scripts/deploy.sh prod
 
 seed:
-	./scripts/deploy.sh test seed
+	./scripts/deploy.sh $(ENV) seed
 
 clean:
 	./scripts/deploy.sh test clean
